@@ -1,1 +1,0 @@
-export const metadata={title:'WSB Rescue'}; export default function RootLayout({children}:{children:React.ReactNode}){return(<html lang='ar' dir='rtl'><body style={{padding:20,fontFamily:'sans-serif'}}>{children}</body></html>);}
