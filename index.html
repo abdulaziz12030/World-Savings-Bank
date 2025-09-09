@@ -33,7 +33,8 @@
     .list .item{display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
     .danger{color:var(--red)} .success{color:var(--green)} .amber{color:var(--amber)}
     .empty{color:var(--muted);font-size:14px}
-    .avatar{width:64px;height:64px;border-radius:999px;background:var(--wblue-100);border:1px solid var(--wblue-200)}
+    .avatar{width:64px;height:64px;border-radius:999px;object-fit:cover;border:1px solid var(--wblue-200);background:#fff}
+    .avatar-lg{width:80px;height:80px;border-radius:999px;object-fit:cover;border:2px solid var(--wblue-200);background:#fff}
     footer{color:#94a3b8;font-size:13px;text-align:center;padding:40px 10px}
     @media (max-width:900px){.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:700px){.grid-2{grid-template-columns:1fr}.grid-3{grid-template-columns:1fr}}
@@ -56,6 +57,7 @@
   <header>
     <div class="bar container">
       <div class="row">
+        <img src="https://i.postimg.cc/tTSfNWkn/image.jpg" alt="عبدالعزيز" class="avatar"/>
         <strong style="font-size:18px">محفظة الادخار العالمية</strong>
         <span class="badge pill">واجهة ثابتة (نسخة تمهيدية)</span>
       </div>
@@ -85,8 +87,15 @@
   <footer>© <span id="year"></span> محفظة الادخار العالمية</footer>
 
   <script>
+  // ------------------ الصور ------------------
+  const IMG = {
+    admin: "https://i.postimg.cc/tTSfNWkn/image.jpg",
+    omar:  "https://i.postimg.cc/LsmbdN0Z/image.jpg",
+    shahad:"https://i.postimg.cc/d1xHyvQ8/image.jpg"
+  };
+
   // ------------------ البيانات والتخزين ------------------
-  const LS_KEY = 'gsw_static_v3';
+  const LS_KEY = 'gsw_static_v4_photos';
   const state = load() || {
     pins: { omar:'4000', shahad:'5000', admin:'9000' },
     pinFail: { omar:0, shahad:0, admin:0 },
@@ -148,10 +157,11 @@
           const a = state.accounts[id];
           const g = a.goal||{amount:0,approved:false,title:''};
           const progress = g.approved && g.amount? goalProgress(a):0;
+          const img = id==='omar'? IMG.omar : IMG.shahad;
           return `
             <div class="card" style="padding:16px">
               <div class="row" style="gap:14px">
-                <div class="avatar"></div>
+                <img src="${img}" alt="${a.name}" class="avatar"/>
                 <div style="flex:1">
                   <div class="muted pill">رصيد الحساب ${g.approved? '' : '(هدف غير معتمد)'}</div>
                   <div class="money" style="font-weight:800;font-size:22px">${fmt(a.balance)} ر.س</div>
@@ -182,13 +192,17 @@
     const g = acc.goal || {title:'',amount:0,approved:false};
     const approvedProgress = g.approved && g.amount ? goalProgress(acc) : 0;
     const pendingOwn = state.txs.filter(t=>t.accountId===id && t.status==='pending').length;
+    const img = id==='omar'? IMG.omar : IMG.shahad;
     root.innerHTML = `
       <section class="card" style="padding:16px">
         <div class="row" style="justify-content:space-between">
-          <div>
-            <div class="muted">رصيد ${acc.name}</div>
-            <div class="money" style="font-weight:800;font-size:26px">${fmt(acc.balance)} ر.س</div>
-            ${pendingOwn? `<div class="tiny amber" style="margin-top:4px">طلبات قيد الموافقة: ${pendingOwn}</div>`:''}
+          <div class="row" style="gap:12px">
+            <img src="${img}" alt="${acc.name}" class="avatar-lg"/>
+            <div>
+              <div class="muted">رصيد ${acc.name}</div>
+              <div class="money" style="font-weight:800;font-size:26px">${fmt(acc.balance)} ر.س</div>
+              ${pendingOwn? `<div class="tiny amber" style="margin-top:4px">طلبات قيد الموافقة: ${pendingOwn}</div>`:''}
+            </div>
           </div>
           <div class="row" style="gap:8px">
             <button class="btn ghost" onclick="go('home')">الرئيسية</button>
@@ -283,9 +297,13 @@
     root.innerHTML = `
       <section class="card" style="padding:16px">
         <div class="row" style="justify-content:space-between;flex-wrap:wrap;gap:12px">
-          <div>
-            <div class="muted">لوحة الآدمن</div>
-            <div style="font-weight:800;font-size:18px">نظرة عامة</div>
+          <div class="row" style="gap:12px">
+            <img src="${IMG.admin}" alt="عبدالعزيز" class="avatar-lg"/>
+            <div>
+              <div class="muted">لوحة الآدمن</div>
+              <div style="font-weight:800;font-size:18px">نظرة عامة</div>
+              <div class="tiny muted">بانتظار: ${pending.length} — موافق: ${approved.length} — مرفوض: ${rejected.length}</div>
+            </div>
           </div>
           <div class="row" style="gap:8px">
             <button class="btn ghost" onclick="go('home')">الرئيسية</button>
@@ -296,13 +314,19 @@
       <section class="grid grid-3">
         ${['omar','shahad'].map(id=>{
           const t = totals(id);
+          const img = id==='omar'? IMG.omar : IMG.shahad;
           return `
           <div class="card" style="padding:16px">
-            <div class="muted">رصيد ${a[id].name}</div>
-            <div class="money" style="font-weight:800;font-size:22px">${fmt(a[id].balance)} ر.س</div>
-            <div class="tiny muted" style="margin-top:6px">إجمالي الإيداعات/الإضافات: ${fmt(t.dep)} ر.س</div>
-            <div class="tiny muted">إجمالي المصروفات/الخصومات: ${fmt(t.out)} ر.س</div>
-            <div class="tiny ${t.net>=0?'success':'danger'}">الصافي: ${fmt(t.net)} ر.س</div>
+            <div class="row" style="gap:12px">
+              <img src="${img}" alt="${a[id].name}" class="avatar"/>
+              <div>
+                <div class="muted">رصيد ${a[id].name}</div>
+                <div class="money" style="font-weight:800;font-size:22px">${fmt(a[id].balance)} ر.س</div>
+                <div class="tiny muted" style="margin-top:6px">إجمالي الإيداعات/الإضافات: ${fmt(t.dep)} ر.س</div>
+                <div class="tiny muted">إجمالي المصروفات/الخصومات: ${fmt(t.out)} ر.س</div>
+                <div class="tiny ${t.net>=0?'success':'danger'}">الصافي: ${fmt(t.net)} ر.س</div>
+              </div>
+            </div>
             ${a[id].goal?.amount?`
               <div class="tiny muted" style="margin-top:6px">الهدف: ${a[id].goal.title? a[id].goal.title+' - ':''}${fmt(a[id].goal.amount)} ر.س ${a[id].goal.approved? '<span class="badge">مُعتمد</span>':'<span class="badge" style="background:#fee2e2;color:#991b1b">بانتظار موافقة</span>'}</div>
               ${a[id].goal.approved? `<div class="progress" style="margin-top:6px"><div style="width:${goalProgress(a[id])}%"></div></div>`:''}
@@ -316,8 +340,8 @@
         <div class="card" style="padding:16px">
           <div class="row" style="justify-content:space-between">
             <div>
-              <div class="muted">الحالة</div>
-              <div class="tiny">بانتظار: ${pending.length} — موافق: ${approved.length} — مرفوض: ${rejected.length}</div>
+              <div class="muted">أدوات سريعة</div>
+              <div class="tiny muted">تصفير السجلات أو الأرصدة (مع تأكيد)</div>
             </div>
             <div class="row" style="gap:8px">
               <button class="btn warn" onclick="confirmReset('txs')">تصفير السجلات</button>
@@ -624,7 +648,6 @@
   function adminExecute(){
     const type = document.getElementById('ad-type').value;
     const from = document.getElementById('ad-from').value;
-    const toWrap = document.getElementById('ad-to-wrap');
     const to = (document.getElementById('ad-to')||{}).value;
     const amount = Number(document.getElementById('ad-amount').value||0);
     const note = document.getElementById('ad-note').value.trim();
