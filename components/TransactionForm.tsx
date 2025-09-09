@@ -27,9 +27,7 @@ export default function TransactionForm({ accountId }: { accountId: AccountId })
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setTab('dep')}
-          className={`px-3 py-2 rounded-xl text-sm font-semibold ${
-            tab === 'dep' ? 'bg-wblue-100 text-wblue-800' : 'bg-gray-100'
-          }`}
+          className={`px-3 py-2 rounded-xl text-sm font-semibold ${tab === 'dep' ? 'bg-wblue-100 text-wblue-800' : 'bg-gray-100'}`}
         >
           <span className="inline-flex items-center gap-1">
             <PlusCircle size={16} /> إيداع
@@ -37,9 +35,7 @@ export default function TransactionForm({ accountId }: { accountId: AccountId })
         </button>
         <button
           onClick={() => setTab('exp')}
-          className={`px-3 py-2 rounded-xl text-sm font-semibold ${
-            tab === 'exp' ? 'bg-wblue-100 text-wblue-800' : 'bg-gray-100'
-          }`}
+          className={`px-3 py-2 rounded-xl text-sm font-semibold ${tab === 'exp' ? 'bg-wblue-100 text-wblue-800' : 'bg-gray-100'}`}
         >
           <span className="inline-flex items-center gap-1">
             <MinusCircle size={16} /> مصروف
@@ -47,9 +43,7 @@ export default function TransactionForm({ accountId }: { accountId: AccountId })
         </button>
         <button
           onClick={() => setTab('trf')}
-          className={`px-3 py-2 rounded-xl text-sm font-semibold ${
-            tab === 'trf' ? 'bg-wblue-100 text-wblue-800' : 'bg-gray-100'
-          }`}
+          className={`px-3 py-2 rounded-xl text-sm font-semibold ${tab === 'trf' ? 'bg-wblue-100 text-wblue-800' : 'bg-gray-100'}`}
         >
           <span className="inline-flex items-center gap-1">
             <ArrowLeftRight size={16} /> تحويل
@@ -86,9 +80,7 @@ export default function TransactionForm({ accountId }: { accountId: AccountId })
             <select
               className="border rounded-xl px-4 py-3"
               value={to}
-              onChange={(e) =>
-                setTo(e.target.value as 'abdulaziz' | 'omar' | 'shahad')
-              }
+              onChange={(e) => setTo(e.target.value as 'abdulaziz' | 'omar' | 'shahad')}
             >
               <option value="abdulaziz">حساب عبدالعزيز</option>
               <option value="omar">حساب عمر</option>
@@ -106,10 +98,7 @@ export default function TransactionForm({ accountId }: { accountId: AccountId })
           />
         )}
 
-        <button
-          onClick={submit}
-          className="bg-wblue-700 text-white rounded-xl py-3 font-semibold"
-        >
+        <button onClick={submit} className="bg-wblue-700 text-white rounded-xl py-3 font-semibold">
           تنفيذ
         </button>
       </div>
