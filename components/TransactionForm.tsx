@@ -86,7 +86,9 @@ export default function TransactionForm({ accountId }: { accountId: AccountId })
             <select
               className="border rounded-xl px-4 py-3"
               value={to}
-              onChange={(e) => setTo(e.target.value as 'abdulaziz' | 'omar' | 'shahad')}
+              onChange={(e) =>
+                setTo(e.target.value as 'abdulaziz' | 'omar' | 'shahad')
+              }
             >
               <option value="abdulaziz">حساب عبدالعزيز</option>
               <option value="omar">حساب عمر</option>
@@ -104,7 +106,10 @@ export default function TransactionForm({ accountId }: { accountId: AccountId })
           />
         )}
 
-        <button onClick={submit} className="bg-wblue-700 text-white rounded-xl py-3 font-semibold">
+        <button
+          onClick={submit}
+          className="bg-wblue-700 text-white rounded-xl py-3 font-semibold"
+        >
           تنفيذ
         </button>
       </div>
