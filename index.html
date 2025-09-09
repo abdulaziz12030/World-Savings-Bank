@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>محفظة الادخار العالمية</title>
+  <style>
+    :root{
+      --wblue-50:#eff6ff;--wblue-100:#dbeafe;--wblue-200:#bfdbfe;--wblue-600:#2563eb;--wblue-700:#1d4ed8;--wblue-800:#1e40af;
+      --text:#0f172a; --muted:#64748b; --bg:#f6f8fc; --border:#e5e7eb; --red:#dc2626; --green:#065f46;
+    }
+    *{box-sizing:border-box}body{margin:0;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Kufi Arabic","Noto Naskh Arabic",Arial;background:var(--bg);color:var(--text)}
+    .container{max-width:1000px;margin:0 auto;padding:24px}
+    header{background:var(--wblue-800);color:#fff}
+    header .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px}
+    a,button{cursor:pointer}
+    .card{background:#fff;border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+    .btn{border:0;background:var(--wblue-700);color:#fff;padding:10px 14px;border-radius:12px;font-weight:700}
+    .btn.ghost{background:#eef2ff;color:#1e3a8a}
+    .btn.muted{background:#e5e7eb;color:#111827}
+    .grid{display:grid;gap:16px}
+    .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .muted{color:var(--muted)}
+    .row{display:flex;align-items:center;gap:10px}
+    .money{font-variant-numeric:tabular-nums}
+    .badge{display:inline-block;background:var(--wblue-100);color:var(--wblue-800);padding:2px 8px;border-radius:999px;font-size:12px}
+    .list{display:grid;gap:10px}
+    .list .item{display:flex;align-items:center;justify-content:space-between;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+    .danger{color:var(--red)} .success{color:var(--green)}
+    /* modal */
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;padding:20px;z-index:40}
+    .modal{width:100%;max-width:360px;background:#fff;border-radius:16px;padding:20px}
+    .input,select{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;outline:none}
+    .input:focus,select:focus{box-shadow:0 0 0 3px rgba(37,99,235,.2);border-color:var(--wblue-600)}
+    .tabs{display:flex;gap:8px;margin-bottom:12px}
+    .tab{padding:8px 12px;border-radius:12px;background:#e5e7eb;font-weight:700}
+    .tab.active{background:var(--wblue-100);color:var(--wblue-800)}
+    .pill{font-size:13px}
+    .empty{color:var(--muted);font-size:14px}
+    .avatar{width:64px;height:64px;border-radius:999px;background:var(--wblue-100);border:1px solid var(--wblue-200)}
+    footer{color:#94a3b8;font-size:13px;text-align:center;padding:40px 10px}
+    @media (max-width:700px){.grid-2{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar container">
+      <div class="row">
+        <strong style="font-size:18px">محفظة الادخار العالمية</strong>
+        <span class="badge pill">نسخة واجهة ثابتة</span>
+      </div>
+      <nav class="row" style="gap:12px">
+        <button class="btn ghost" id="nav-home">الرئيسية</button>
+        <button class="btn ghost" id="nav-admin">لوحة الآدمن</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" id="view-root">
+    <!-- يُحقن المحتوى ديناميكيًا -->
+  </main>
+
+  <!-- Modal PIN -->
+  <div class="overlay" id="pin-overlay" role="dialog" aria-modal="true">
+    <div class="modal card">
+      <h3 style="margin:0 0 6px 0">أدخل الرقم السري</h3>
+      <div class="muted" id="pin-desc" style="margin-bottom:12px">للتحقق</div>
+      <input class="input" id="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="أربع خانات" />
+      <div class="row" style="margin-top:12px;gap:8px">
+        <button class="btn" id="pin-confirm">تأكيد</button>
+        <button class="btn muted" id="pin-cancel">إلغاء</button>
+      </div>
+      <div class="danger" id="pin-error" style="margin-top:8px;display:none">الرقم السري غير صحيح</div>
+    </div>
+  </div>
+
+  <footer>© <span id="year"></span> محفظة الادخار العالمية</footer>
+
+  <script>
+  // ------------------ البيانات والتخزين ------------------
+  const LS_KEY = 'gsw_static_v1';
+  const state = load() || {
+    pins: { omar:'1234', shahad:'5678', admin:'2468' },
+    accounts: {
+      omar:   { id:'omar',   name:'عمر',  balance:0 },
+      shahad: { id:'shahad', name:'شهد', balance:0 }
+    },
+    txs: [] // {id, accountId, type, amount, note?, counterparty?, createdAt}
+  };
+  save();
+
+  function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch{ return null; } }
+  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+  function fmt(n){ return Number(n).toLocaleString('ar-SA'); }
+  function now(){ return new Date().toISOString(); }
+  function fmtDate(iso){ return new Date(iso).toLocaleString('ar-SA'); }
+  function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+
+  // ------------------ التوجيه البسيط ------------------
+  const root = document.getElementById('view-root');
+  const routes = {
+    home: renderHome,
+    'account:omar': () => requestPin('حساب عمر', state.pins.omar).then(ok => ok ? renderAccount('omar') : renderHome()),
+    'account:shahad': () => requestPin('حساب شهد', state.pins.shahad).then(ok => ok ? renderAccount('shahad') : renderHome()),
+    admin: () => requestPin('لوحة الآدمن (عبدالعزيز)', state.pins.admin).then(ok => ok ? renderAdmin() : renderHome())
+  };
+
+  document.getElementById('nav-home').onclick = () => go('home');
+  document.getElementById('nav-admin').onclick = () => go('admin');
+  window.addEventListener('hashchange', handleRoute);
+  function go(name){ location.hash = '#'+name; }
+  function handleRoute(){
+    const h = location.hash.replace(/^#/, '') || 'home';
+    if (h.startsWith('account=')){
+      const who = h.split('=')[1];
+      routes['account:'+who] ? routes['account:'+who]() : renderHome();
+    } else {
+      (routes[h] || renderHome)();
+    }
+  }
+
+  // ------------------ واجهة: الرئيسية ------------------
+  function renderHome(){
+    root.innerHTML = `
+      <section class="card" style="padding:18px;background:linear-gradient(90deg,var(--wblue-800),var(--wblue-700));color:#fff">
+        <div style="font-weight:700;font-size:18px;margin-bottom:4px">أهلًا!</div>
+        <div class="muted" style="color:#e5e7eb">اختر الحساب للاطلاع وإجراء العمليات، أو ادخل لوحة الآدمن.</div>
+      </section>
+
+      <section class="grid grid-2">
+        ${['omar','shahad'].map(id => {
+          const a = state.accounts[id];
+          return `
+            <div class="card" style="padding:16px">
+              <div class="row" style="gap:14px">
+                <div class="avatar"></div>
+                <div style="flex:1">
+                  <div class="muted pill">رصيد الحساب</div>
+                  <div class="money" style="font-weight:800;font-size:22px">${fmt(a.balance)} ر.س</div>
+                  <div style="margin-top:4px;color:var(--wblue-800);font-weight:700">حساب ${a.name} الإدخاري</div>
+                </div>
+                <button class="btn" onclick="go('account=${id}')">فتح</button>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </section>
+
+      <section>
+        <h3 style="margin:16px 0 8px 0">أحدث العمليات</h3>
+        ${renderTxList(null, 5)}
+      </section>
+    `;
+  }
+
+  // ------------------ واجهة: حساب محدد ------------------
+  function renderAccount(id){
+    const acc = state.accounts[id];
+    root.innerHTML = `
+      <section class="card" style="padding:16px">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <div class="muted">رصيد ${acc.name}</div>
+            <div class="money" style="font-weight:800;font-size:26px">${fmt(acc.balance)} ر.س</div>
+          </div>
+          <div class="row" style="gap:8px">
+            <button class="btn ghost" onclick="go('home')">الرئيسية</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid-2">
+        <div class="card" style="padding:16px">
+          <div class="tabs">
+            <div class="tab active" id="tab-dep">إيداع</div>
+            <div class="tab" id="tab-exp">مصروف</div>
+            <div class="tab" id="tab-trf">تحويل</div>
+          </div>
+
+          <div id="form-dep">
+            <input class="input" id="dep-amount" type="number" placeholder="المبلغ بالريال" />
+            <input class="input" id="dep-note"   type="text"   placeholder="ملاحظة (اختياري)" style="margin-top:8px"/>
+            <button class="btn" style="margin-top:10px" onclick="doDeposit('${id}')">تنفيذ</button>
+          </div>
+
+          <div id="form-exp" style="display:none">
+            <input class="input" id="exp-amount" type="number" placeholder="المبلغ بالريال" />
+            <input class="input" id="exp-note"   type="text"   placeholder="ملاحظة (اختياري)" style="margin-top:8px"/>
+            <button class="btn" style="margin-top:10px" onclick="doExpense('${id}')">تنفيذ</button>
+          </div>
+
+          <div id="form-trf" style="display:none">
+            <input class="input" id="trf-amount" type="number" placeholder="المبلغ بالريال" />
+            <select class="input" id="trf-to" style="margin-top:8px">
+              <option value="abdulaziz">حساب عبدالعزيز</option>
+              <option value="omar">حساب عمر</option>
+              <option value="shahad">حساب شهد</option>
+            </select>
+            <button class="btn" style="margin-top:10px" onclick="doTransfer('${id}')">تنفيذ</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding:16px">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <h3 style="margin:0">سجل العمليات</h3>
+            <span class="badge">الحساب: ${acc.name}</span>
+          </div>
+          ${renderTxList(id)}
+        </div>
+      </section>
+    `;
+    // Tabs behavior
+    const tabDep = document.getElementById('tab-dep');
+    const tabExp = document.getElementById('tab-exp');
+    const tabTrf = document.getElementById('tab-trf');
+    const Fdep = document.getElementById('form-dep');
+    const Fexp = document.getElementById('form-exp');
+    const Ftrf = document.getElementById('form-trf');
+
+    tabDep.onclick = ()=>{ tabDep.classList.add('active'); tabExp.classList.remove('active'); tabTrf.classList.remove('active'); Fdep.style.display='block'; Fexp.style.display='none'; Ftrf.style.display='none'; };
+    tabExp.onclick = ()=>{ tabExp.classList.add('active'); tabDep.classList.remove('active'); tabTrf.classList.remove('active'); Fexp.style.display='block'; Fdep.style.display='none'; Ftrf.style.display='none'; };
+    tabTrf.onclick = ()=>{ tabTrf.classList.add('active'); tabDep.classList.remove('active'); tabExp.classList.remove('active'); Ftrf.style.display='block'; Fdep.style.display='none'; Fexp.style.display='none'; };
+  }
+
+  // ------------------ واجهة: لوحة الآدمن ------------------
+  function renderAdmin(){
+    const a = state.accounts;
+    root.innerHTML = `
+      <section class="card" style="padding:16px">
+        <div class="row" style="justify-content:space-between">
+          <div>
+            <div class="muted">لوحة الآدمن</div>
+            <div style="font-weight:800;font-size:18px">نظرة عامة</div>
+          </div>
+          <button class="btn ghost" onclick="go('home')">الرئيسية</button>
+        </div>
+      </section>
+
+      <section class="grid grid-2">
+        ${['omar','shahad'].map(id=>`
+          <div class="card" style="padding:16px">
+            <div class="muted">رصيد ${a[id].name}</div>
+            <div class="money" style="font-weight:800;font-size:22px">${fmt(a[id].balance)} ر.س</div>
+            <button class="btn" style="margin-top:10px" onclick="go('account=${id}')">فتح الحساب</button>
+          </div>
+        `).join('')}
+      </section>
+
+      <section class="card" style="padding:16px">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <h3 style="margin:0">كل العمليات</h3>
+          <span class="badge">عبدالعزيز (آدمن)</span>
+        </div>
+        ${renderTxList(null)}
+      </section>
+    `;
+  }
+
+  // ------------------ العمليات المالية ------------------
+  function addTx(tx){
+    state.txs.unshift(tx);
+    save();
+  }
+  function updateBalances(){
+    // balances محفوظة مباشرة—لا حاجة لإعادة الحساب كل مرة
+    save();
+  }
+  function doDeposit(id){
+    const amount = Number(document.getElementById('dep-amount').value || 0);
+    const note = document.getElementById('dep-note').value.trim();
+    if (!amount || amount<=0) return alert('أدخل مبلغ صحيح');
+    state.accounts[id].balance += amount;
+    addTx({id:uid(), accountId:id, type:'deposit', amount, note, createdAt:now()});
+    updateBalances(); renderAccount(id);
+  }
+  function doExpense(id){
+    const amount = Number(document.getElementById('exp-amount').value || 0);
+    const note = document.getElementById('exp-note').value.trim();
+    if (!amount || amount<=0) return alert('أدخل مبلغ صحيح');
+    state.accounts[id].balance -= amount;
+    addTx({id:uid(), accountId:id, type:'expense', amount, note, createdAt:now()});
+    updateBalances(); renderAccount(id);
+  }
+  function doTransfer(fromId){
+    const amount = Number(document.getElementById('trf-amount').value || 0);
+    const to = document.getElementById('trf-to').value;
+    if (!amount || amount<=0) return alert('أدخل مبلغ صحيح');
+    if (to === fromId) return alert('لا يمكن التحويل لنفس الحساب');
+    // خصم من المرسل
+    state.accounts[fromId].balance -= amount;
+    addTx({id:uid(), accountId:fromId, type:'transfer-out', amount, counterparty:to, createdAt:now()});
+    // إضافة للمستقبل إذا عمر/شهد
+    if (to === 'omar' || to === 'shahad'){
+      state.accounts[to].balance += amount;
+      addTx({id:uid(), accountId:to, type:'transfer-in', amount, counterparty:fromId, createdAt:now()});
+    }
+    updateBalances(); renderAccount(fromId);
+  }
+
+  // ------------------ عرض السجل ------------------
+  function renderTxList(accountId, limit){
+    const list = (accountId ? state.txs.filter(t=>t.accountId===accountId) : state.txs).slice(0, limit||9999);
+    if (list.length===0) return `<div class="card empty" style="padding:14px">لا توجد عمليات بعد</div>`;
+    return `
+      <div class="list">
+        ${list.map(t=>{
+          const label =
+            t.type==='deposit' ? 'إيداع' :
+            t.type==='expense' ? 'مصروف' :
+            t.type==='transfer-in' ? `تحويل - إضافة (${nameOf(t.counterparty)})` :
+            t.type==='transfer-out' ? `تحويل - خصم (${nameOf(t.counterparty)})` : t.type;
+          const cls = (t.type==='expense' || t.type==='transfer-out') ? 'danger' : 'success';
+          const sign = (t.type==='expense' || t.type==='transfer-out') ? '-' : '+';
+          return `
+            <div class="item">
+              <div>
+                <div style="font-weight:700">${label}</div>
+                <div class="muted" style="font-size:13px">${fmtDate(t.createdAt)}</div>
+              </div>
+              <div class="money ${cls}" style="font-weight:800">${sign}${fmt(t.amount)} ر.س</div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+  function nameOf(id){
+    if (id==='omar') return 'عمر';
+    if (id==='shahad') return 'شهد';
+    if (id==='abdulaziz') return 'عبدالعزيز';
+    return id||'';
+    }
+
+  // ------------------ نافذة PIN ------------------
+  const ovl = document.getElementById('pin-overlay');
+  const pinInput = document.getElementById('pin-input');
+  const pinDesc = document.getElementById('pin-desc');
+  const pinErr = document.getElementById('pin-error');
+  document.getElementById('pin-cancel').onclick = ()=>{ hidePin(false); };
+  document.getElementById('pin-confirm').onclick = ()=> confirmPin();
+
+  let pinResolve = null, expectedPin = '';
+  function requestPin(title, expPin){
+    expectedPin = String(expPin||'');
+    pinDesc.textContent = 'للتحقق من ' + title;
+    pinInput.value = '';
+    pinErr.style.display = 'none';
+    ovl.style.display = 'grid';
+    return new Promise(res => { pinResolve = res; pinInput.focus(); });
+  }
+  function hidePin(ok){ ovl.style.display = 'none'; if (pinResolve){ pinResolve(ok); pinResolve = null; } }
+  function confirmPin(){
+    const v = pinInput.value.trim();
+    if (v === expectedPin){ hidePin(true); }
+    else { pinErr.style.display = 'block'; }
+  }
+
+  // ------------------ بدء التطبيق ------------------
+  document.getElementById('year').textContent = new Date().getFullYear();
+  handleRoute(); // أول عرض
+  </script>
+</body>
+</html>
