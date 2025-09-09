@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>محفظة الادخار العالمية</title>
+  <title>محفظة الادخار العالمية — مزامنة تلقائية (Firebase)</title>
   <style>
     :root{
       --wblue-50:#eff6ff;--wblue-100:#dbeafe;--wblue-200:#bfdbfe;--wblue-600:#2563eb;--wblue-700:#1d4ed8;--wblue-800:#1e40af;
-      --text:#0f172a; --muted:#64748b; --bg:#f6f8fc; --border:#e5e7eb; --red:#dc2626; --green:#065f46; --amber:#b45309; --amber-100:#fde68a;
+      --text:#0f172a; --muted:#64748b; --bg:#f6f8fc; --border:#e5e7eb; --red:#dc2626; --green:#065f46; --amber:#b45309;
       --card-bg:#fff;
     }
     *{box-sizing:border-box}
@@ -38,7 +38,6 @@
     footer{color:#94a3b8;font-size:13px;text-align:center;padding:40px 10px}
     @media (max-width:900px){.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media (max-width:700px){.grid-2{grid-template-columns:1fr}.grid-3{grid-template-columns:1fr}}
-    /* modal */
     .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;padding:20px;z-index:40}
     .modal{width:100%;max-width:400px;background:#fff;border-radius:16px;padding:20px}
     .input,select{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;outline:none}
@@ -46,10 +45,9 @@
     .tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
     .tab{padding:8px 12px;border-radius:12px;background:#e5e7eb;font-weight:700}
     .tab.active{background:var(--wblue-100);color:var(--wblue-800)}
-    .pill{font-size:13px}
+    .tiny{font-size:12px}
     .progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden}
     .progress > div{height:100%;background:linear-gradient(90deg,var(--wblue-700),var(--wblue-600))}
-    .tiny{font-size:12px}
     .section-title{margin:0 0 8px 0;font-weight:800}
   </style>
 </head>
@@ -59,7 +57,7 @@
       <div class="row">
         <img src="https://i.postimg.cc/tTSfNWkn/image.jpg" alt="عبدالعزيز" class="avatar"/>
         <strong style="font-size:18px">محفظة الادخار العالمية</strong>
-        <span class="badge pill">واجهة ثابتة (نسخة تمهيدية)</span>
+        <span class="badge">مزامنة Firebase</span>
       </div>
       <nav class="row" style="gap:12px">
         <button class="btn ghost" id="nav-home">الرئيسية</button>
@@ -86,37 +84,83 @@
 
   <footer>© <span id="year"></span> محفظة الادخار العالمية</footer>
 
+  <!-- Firebase SDKs (Compat to expose global 'firebase') -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
   <script>
-  // ------------------ الصور ------------------
+  // ========== 1) إعداد Firebase ==========
+  // ضع إعدادات مشروعك هنا (من Firebase console > Project settings > SDK setup & config)
+  const firebaseConfig = {
+    apiKey: "PASTE_YOUR_API_KEY",
+    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "PASTE_YOUR_PROJECT",
+    storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+    messagingSenderId: "000000000000",
+    appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxxxx"
+  };
+  // ملاحظة: استخدم Realtime Database في وضع الاختبار أثناء التطوير، ثم أضف قواعد أمان مناسبة لاحقًا.
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  // يمكن تغيير namespace أدناه لتفصل بين بيئات متعددة
+  const DB_ROOT = 'wsb/state';
+
+  // ========== 2) صور الحسابات ==========
   const IMG = {
     admin: "https://i.postimg.cc/tTSfNWkn/image.jpg",
     omar:  "https://i.postimg.cc/LsmbdN0Z/image.jpg",
     shahad:"https://i.postimg.cc/d1xHyvQ8/image.jpg"
   };
 
-  // ------------------ البيانات والتخزين ------------------
-  const LS_KEY = 'gsw_static_v4_photos';
-  const state = load() || {
+  // ========== 3) الحالة الافتراضية ==========
+  const defaults = {
     pins: { omar:'4000', shahad:'5000', admin:'9000' },
-    pinFail: { omar:0, shahad:0, admin:0 },
-    lockUntil: { omar:0, shahad:0, admin:0 }, // timestamp ms
     accounts: {
       omar:   { id:'omar',   name:'عمر',  balance:0, goal:{ title:'', amount:0, approved:false } },
       shahad: { id:'shahad', name:'شهد', balance:0, goal:{ title:'', amount:0, approved:false } }
     },
-    txs: [] // {id, accountId, type, amount, note?, counterparty?, createdAt, status:'pending'|'approved'|'rejected', pair?}
+    txs: [] // {id, accountId, type, amount, note?, counterparty?, createdAt(ms), status:'pending'|'approved'|'rejected', pair?}
   };
-  save();
 
-  function load(){ try{ return JSON.parse(localStorage.getItem(LS_KEY)); }catch{ return null; } }
-  function save(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
-  function fmt(n){ return Number(n).toLocaleString('ar-SA'); }
-  function now(){ return new Date().toISOString(); }
-  function fmtDate(iso){ return new Date(iso).toLocaleString('ar-SA'); }
-  function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
-
-  // ------------------ التوجيه ------------------
+  // ========== 4) أدوات عامة ==========
   const root = document.getElementById('view-root');
+  function fmt(n){ return Number(n).toLocaleString('ar-SA'); }
+  function fmtDate(ms){ return new Date(ms).toLocaleString('ar-SA'); }
+  function uid(){ return Math.random().toString(36).slice(2)+Date.now().toString(36); }
+  function now(){ return Date.now(); }
+  function escapeHtml(s){ return s.replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
+
+  // ========== 5) تحميل الحالة ومزامنتها لحظيًا ==========
+  let state = JSON.parse(JSON.stringify(defaults)); // نسخة محلية للعمل
+  const stateRef = db.ref(DB_ROOT);
+
+  // أول تشغيل: لو لا توجد بيانات في DB، اكتب الافتراضي
+  stateRef.get().then(snap=>{
+    if (!snap.exists()){
+      return stateRef.set(defaults);
+    }
+  });
+
+  // استمع لأي تغيير في السحابة وحدث الواجهة
+  stateRef.on('value', (snap)=>{
+    const cloud = snap.val();
+    state = Object.assign({}, defaults, cloud || {});
+    // ترتيب txs بالأحدث أولًا (createdAt أكبر أولًا)
+    if (Array.isArray(state.txs)) state.txs = state.txs.filter(Boolean);
+    else if (typeof state.txs === 'object') state.txs = Object.values(state.txs);
+    state.txs.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
+    // إعادة الرسم حسب المسار
+    handleRoute();
+  });
+
+  // كتابة كاملة (بسيطة) — مناسبة لمشروع صغير. (يمكن لاحقًا تحويلها لتحديثات جزئية for scale)
+  function writeState(next){
+    const merged = Object.assign({}, state, next||{});
+    return stateRef.set(merged);
+  }
+
+  // ========== 6) التوجيه ==========
   const routes = {
     home: renderHome,
     'account:omar': () => requestPin('حساب عمر', 'omar').then(ok => ok ? renderAccount('omar') : renderHome()),
@@ -137,14 +181,14 @@
     }
   }
 
-  // ------------------ واجهة: الرئيسية ------------------
+  // ========== 7) واجهة الرئيسية ==========
   function goalProgress(a){
     const g = a.goal||{amount:0,approved:false}; if (!g.amount) return 0;
     const p = Math.max(0, Math.min(100, Math.round((a.balance / g.amount)*100)));
     return p;
   }
   function renderHome(){
-    const pendingCount = state.txs.filter(t=>t.status==='pending').length;
+    const pendingCount = (state.txs||[]).filter(t=>t.status==='pending').length;
     root.innerHTML = `
       <section class="card" style="padding:18px;background:linear-gradient(90deg,var(--wblue-800),var(--wblue-700));color:#fff">
         <div style="font-weight:700;font-size:18px;margin-bottom:4px">أهلًا!</div>
@@ -163,7 +207,7 @@
               <div class="row" style="gap:14px">
                 <img src="${img}" alt="${a.name}" class="avatar"/>
                 <div style="flex:1">
-                  <div class="muted pill">رصيد الحساب ${g.approved? '' : '(هدف غير معتمد)'}</div>
+                  <div class="muted">رصيد الحساب</div>
                   <div class="money" style="font-weight:800;font-size:22px">${fmt(a.balance)} ر.س</div>
                   <div style="margin-top:4px;color:var(--wblue-800);font-weight:700">حساب ${a.name} الإدخاري</div>
                   ${g.amount?`
@@ -186,12 +230,12 @@
     `;
   }
 
-  // ------------------ واجهة: حساب ------------------
+  // ========== 8) واجهة الحساب ==========
   function renderAccount(id){
     const acc = state.accounts[id];
     const g = acc.goal || {title:'',amount:0,approved:false};
     const approvedProgress = g.approved && g.amount ? goalProgress(acc) : 0;
-    const pendingOwn = state.txs.filter(t=>t.accountId===id && t.status==='pending').length;
+    const pendingOwn = (state.txs||[]).filter(t=>t.accountId===id && t.status==='pending').length;
     const img = id==='omar'? IMG.omar : IMG.shahad;
     root.innerHTML = `
       <section class="card" style="padding:16px">
@@ -281,12 +325,12 @@
     tabTrf.onclick = ()=>{ tabTrf.classList.add('active'); tabDep.classList.remove('active'); tabExp.classList.remove('active'); Ftrf.style.display='block'; Fdep.style.display='none'; Fexp.style.display='none'; };
   }
 
-  // ------------------ واجهة: لوحة الآدمن ------------------
+  // ========== 9) لوحة الآدمن ==========
   function renderAdmin(){
     const a = state.accounts;
-    const pending = state.txs.filter(t=>t.status==='pending');
-    const approved = state.txs.filter(t=>t.status==='approved');
-    const rejected = state.txs.filter(t=>t.status==='rejected');
+    const pending = (state.txs||[]).filter(t=>t.status==='pending');
+    const approved = (state.txs||[]).filter(t=>t.status==='approved');
+    const rejected = (state.txs||[]).filter(t=>t.status==='rejected');
 
     const totals = (id)=>{
       const dep = approved.filter(t=>t.accountId===id && (t.type==='deposit'||t.type==='transfer-in')).reduce((s,t)=>s+t.amount,0);
@@ -353,12 +397,6 @@
 
       <section class="card" style="padding:16px;margin-top:8px">
         <h3 class="section-title">تنفيذ عملية بواسطة الآدمن</h3>
-        <div class="tiny muted" style="margin:6px 0 18px">للمزامنة اليدوية بين الأجهزة: اصدر نسخة JSON من البيانات ثم استرجعها على الجهاز الآخر.</div>
-        <div class="row" style="gap:8px;flex-wrap:wrap;margin-bottom:8px">
-          <button class="btn" onclick="exportData()">تنزيل نسخة احتياطية (JSON)</button>
-          <button class="btn muted" onclick="importData()">استرجاع من JSON</button>
-        </div>
-
         <div class="grid grid-3">
           <div>
             <label class="tiny muted">نوع العملية</label>
@@ -467,7 +505,7 @@
     const from = document.getElementById('f-from')?.value ? new Date(document.getElementById('f-from').value) : null;
     const to   = document.getElementById('f-to')?.value ? new Date(document.getElementById('f-to').value)   : null;
 
-    let list = [...state.txs].filter(t=>t.status===active);
+    let list = [...(state.txs||[])].filter(t=>t.status===active);
     if (acc) list = list.filter(t=>t.accountId===acc);
     if (typ) list = list.filter(t=>t.type===typ);
     if (par) list = list.filter(t=> (t.counterparty||'')===par);
@@ -534,7 +572,7 @@
       `<div class="empty card" style="padding:14px">لا توجد طلبات أهداف</div>`;
   }
 
-  // ------------------ الدوال المساعدة للعمليات ------------------
+  // ========== 10) ملصقات العمليات ==========
   function txLabel(t){
     const label =
       t.type==='deposit' ? 'إيداع' :
@@ -552,7 +590,9 @@
     return id||'';
   }
   function renderTxList(accountId, limit){
-    const list = (accountId ? state.txs.filter(t=>t.accountId===accountId) : state.txs).slice(0, limit||9999);
+    let list = (state.txs||[]);
+    if (accountId) list = list.filter(t=>t.accountId===accountId);
+    list = list.slice(0, limit||list.length);
     if (list.length===0) return `<div class="card empty" style="padding:14px">لا توجد عمليات بعد</div>`;
     return `
       <div class="list">
@@ -575,15 +615,19 @@
     `;
   }
 
-  // ------------------ طلبات العمليات (بحاجة موافقة) ------------------
+  // ========== 11) إنشاء الطلبات (بانتظار موافقة) ==========
+  function pushTx(tx){
+    // نخزن txs كمصفوفة بسيطة (بما أن المشروع صغير) — نكتب الحالة كاملة
+    state.txs.unshift(tx);
+    return writeState({ txs: state.txs });
+  }
+
   function requestDeposit(id){
     const amount = Number(document.getElementById('dep-amount').value || 0);
     const note = document.getElementById('dep-note').value.trim();
     if (!amount || amount<=0) return alert('أدخل مبلغ صحيح');
     const tx = {id:uid(), accountId:id, type:'deposit', amount, note, createdAt:now(), status:'pending'};
-    state.txs.unshift(tx); save();
-    alert('تم إرسال طلب الإيداع للآدمن للموافقة.');
-    renderAccount(id); renderHome();
+    pushTx(tx).then(()=> alert('تم إرسال طلب الإيداع للآدمن للموافقة.'));
   }
 
   function requestExpense(id){
@@ -592,9 +636,7 @@
     if (!amount || amount<=0) return alert('أدخل مبلغ صحيح');
     if (state.accounts[id].balance < amount) return alert('الرصيد لا يكفي لطلب الصرف.');
     const tx = {id:uid(), accountId:id, type:'expense', amount, note, createdAt:now(), status:'pending'};
-    state.txs.unshift(tx); save();
-    alert('تم إرسال طلب الصرف للآدمن للموافقة.');
-    renderAccount(id); renderHome();
+    pushTx(tx).then(()=> alert('تم إرسال طلب الصرف للآدمن للموافقة.'));
   }
 
   function requestTransfer(fromId){
@@ -604,123 +646,117 @@
     if (to === fromId) return alert('لا يمكن التحويل لنفس الحساب');
     if (state.accounts[fromId].balance < amount) return alert('الرصيد لا يكفي للتحويل.');
     const outTx = {id:uid(), accountId:fromId, type:'transfer-out', amount, counterparty:to, createdAt:now(), status:'pending'};
-    state.txs.unshift(outTx);
+    const list = [outTx];
     if (to==='omar' || to==='shahad'){
       const inTx = {id:uid(), accountId:to, type:'transfer-in', amount, counterparty:fromId, createdAt:now(), status:'pending', pair:outTx.id};
-      state.txs.unshift(inTx);
       outTx.pair = inTx.id;
+      list.push(inTx);
     }
-    save();
-    alert('تم إرسال طلب التحويل للآدمن للموافقة.');
-    renderAccount(fromId); renderHome();
+    // أضف الاثنين معًا للأعلى
+    state.txs = list.concat(state.txs);
+    writeState({ txs: state.txs }).then(()=> alert('تم إرسال طلب التحويل للآدمن للموافقة.'));
   }
 
-  // ------------------ موافقات الآدمن ------------------
+  // ========== 12) موافقات الآدمن ==========
   function approveTx(id){
-    const t = state.txs.find(x=>x.id===id);
+    const t = (state.txs||[]).find(x=>x.id===id);
     if (!t || t.status!=='pending') return;
+    const a = state.accounts;
+
     if (t.type==='expense' || t.type==='transfer-out'){
-      if (state.accounts[t.accountId].balance < t.amount){ alert('لا يمكن الموافقة: الرصيد لا يكفي'); return; }
-      state.accounts[t.accountId].balance -= t.amount;
+      if (a[t.accountId].balance < t.amount){ alert('لا يمكن الموافقة: الرصيد لا يكفي'); return; }
+      a[t.accountId].balance -= t.amount;
     } else if (t.type==='deposit' || t.type==='transfer-in'){
-      state.accounts[t.accountId].balance += t.amount;
+      a[t.accountId].balance += t.amount;
     }
     t.status = 'approved';
+
+    // موافقة القرين في التحويل
     if ((t.type==='transfer-in' || t.type==='transfer-out') && t.pair){
-      const p = state.txs.find(x=>x.id===t.pair);
+      const p = (state.txs||[]).find(x=>x.id===t.pair);
       if (p && p.status==='pending'){
-        if (p.type==='transfer-in'){ state.accounts[p.accountId].balance += p.amount; }
+        if (p.type==='transfer-in'){ a[p.accountId].balance += p.amount; }
         if (p.type==='transfer-out'){
-          if (state.accounts[p.accountId].balance >= p.amount){ state.accounts[p.accountId].balance -= p.amount; }
+          if (a[p.accountId].balance >= p.amount){ a[p.accountId].balance -= p.amount; }
         }
         p.status = 'approved';
       }
     }
-    save(); renderAdmin(); renderHome();
+    writeState({ accounts: a, txs: state.txs });
   }
 
   function rejectTx(id){
-    const t = state.txs.find(x=>x.id===id);
+    const t = (state.txs||[]).find(x=>x.id===id);
     if (!t || t.status!=='pending') return;
     t.status = 'rejected';
     if ((t.type==='transfer-in' || t.type==='transfer-out') && t.pair){
-      const p = state.txs.find(x=>x.id===t.pair);
+      const p = (state.txs||[]).find(x=>x.id===t.pair);
       if (p && p.status==='pending'){ p.status='rejected'; }
     }
-    save(); renderAdmin(); renderHome();
+    writeState({ txs: state.txs });
   }
 
-  // ------------------ تنفيذ مباشر بواسطة الآدمن ------------------
+  // ========== 13) تنفيذ مباشر بواسطة الآدمن (موافقة فورية) ==========
   function adminExecute(){
     const type = document.getElementById('ad-type').value;
     const from = document.getElementById('ad-from').value;
     const to = (document.getElementById('ad-to')||{}).value;
     const amount = Number(document.getElementById('ad-amount').value||0);
     const note = document.getElementById('ad-note').value.trim();
-
     if (!amount || amount<=0) return alert('أدخل مبلغ صحيح');
+
+    const a = state.accounts;
+
     if (type==='expense' || type==='transfer'){
-      if (state.accounts[from].balance < amount) return alert('الرصيد لا يكفي.');
+      if (a[from].balance < amount) return alert('الرصيد لا يكفي.');
     }
+
     if (type==='deposit'){
       const tx = {id:uid(), accountId:from, type:'deposit', amount, note, createdAt:now(), status:'approved'};
       state.txs.unshift(tx);
-      state.accounts[from].balance += amount;
+      a[from].balance += amount;
     } else if (type==='expense'){
       const tx = {id:uid(), accountId:from, type:'expense', amount, note, createdAt:now(), status:'approved'};
       state.txs.unshift(tx);
-      state.accounts[from].balance -= amount;
+      a[from].balance -= amount;
     } else if (type==='transfer'){
       if (!to) return alert('اختر جهة التحويل');
       if (to === from) return alert('لا يمكن التحويل لنفس الحساب');
       const outTx = {id:uid(), accountId:from, type:'transfer-out', amount, counterparty:to, createdAt:now(), status:'approved'};
       state.txs.unshift(outTx);
-      state.accounts[from].balance -= amount;
+      a[from].balance -= amount;
       if (to==='omar' || to==='shahad'){
         const inTx = {id:uid(), accountId:to, type:'transfer-in', amount, counterparty:from, createdAt:now(), status:'approved', pair:outTx.id};
         state.txs.unshift(inTx);
         outTx.pair = inTx.id;
-        state.accounts[to].balance += amount;
+        a[to].balance += amount;
       }
     }
-    save();
-    alert('تم التنفيذ.');
-    renderAdmin(); renderHome();
+
+    writeState({ accounts: a, txs: state.txs }).then(()=> alert('تم التنفيذ.'));
   }
 
-  // ------------------ الأهداف ------------------
+  // ========== 14) الأهداف ==========
   function submitGoal(id){
     const title = document.getElementById('goal-title').value.trim();
     const amount = Number(document.getElementById('goal-amount').value || 0);
     if (!amount || amount<=0) return alert('أدخل مبلغ هدف صحيح');
     state.accounts[id].goal = { title, amount, approved:false };
-    save(); alert('تم إرسال هدف الادخار للآدمن للموافقة.');
-    renderAccount(id); renderHome();
+    writeState({ accounts: state.accounts }).then(()=> alert('تم إرسال هدف الادخار للآدمن للموافقة.'));
   }
   function approveGoal(id){
     const g = state.accounts[id].goal; if (!g) return;
-    g.approved = true; save(); renderAdmin(); renderHome();
+    g.approved = true;
+    writeState({ accounts: state.accounts });
   }
   function rejectGoal(id){
     state.accounts[id].goal = { title:'', amount:0, approved:false };
-    save(); renderAdmin(); renderHome();
+    writeState({ accounts: state.accounts });
   }
 
-  function confirmReset(type){
-    if (type==='txs'){
-      if (confirm('هل تريد حقًا تصفير كل السجلات؟')){
-        state.txs = []; save(); renderAdmin(); renderHome();
-      }
-    } else if (type==='balances'){
-      if (confirm('هل تريد حقًا تصفير أرصدة عمر وشهد؟')){
-        state.accounts.omar.balance = 0;
-        state.accounts.shahad.balance = 0;
-        save(); renderAdmin(); renderHome();
-      }
-    }
-  }
-
-  // ------------------ PIN مع إغلاق مؤقت بعد 3 محاولات ------------------
+  // ========== 15) PIN مع إغلاق مؤقت محلي (واجهة فقط) ==========
+  // ملاحظة: PIN هنا يُتحقق منه ضد الحالة في Firebase دون تشفير — للاستخدام العائلي فقط.
+  // في الإنتاج يجب استخدام Auth Rules/Cloud Functions.
   const ovl = document.getElementById('pin-overlay');
   const pinInput = document.getElementById('pin-input');
   const pinDesc = document.getElementById('pin-desc');
@@ -728,13 +764,15 @@
   document.getElementById('pin-cancel').onclick = ()=>{ hidePin(false); };
 
   let pinResolve = null, whoKey = '';
+  const pinFail = { omar:0, shahad:0, admin:0 };
+  const lockUntil = { omar:0, shahad:0, admin:0 };
+
   document.getElementById('pin-confirm').onclick = ()=> confirmPin();
   function requestPin(title, who){
     whoKey = who;
-    const lockMs = state.lockUntil[who] || 0;
     const nowt = Date.now();
-    if (lockMs && nowt < lockMs){
-      const secs = Math.ceil((lockMs - nowt)/1000);
+    if (lockUntil[who] && nowt < lockUntil[who]){
+      const secs = Math.ceil((lockUntil[who] - nowt)/1000);
       alert('محاولات كثيرة خاطئة. الرجاء المحاولة بعد '+secs+' ثانية.');
       return Promise.resolve(false);
     }
@@ -748,56 +786,21 @@
   function confirmPin(){
     const v = pinInput.value.trim();
     if (v === state.pins[whoKey]){
-      state.pinFail[whoKey] = 0; save(); hidePin(true);
+      pinFail[whoKey] = 0; hidePin(true);
     } else {
-      state.pinFail[whoKey] = (state.pinFail[whoKey]||0) + 1; save();
-      if (state.pinFail[whoKey] >= 3){
-        state.lockUntil[whoKey] = Date.now()+60000; // إغلاق دقيقة
-        save();
+      pinFail[whoKey] = (pinFail[whoKey]||0) + 1;
+      if (pinFail[whoKey] >= 3){
+        lockUntil[whoKey] = Date.now()+60000; // إغلاق دقيقة
         pinErr.style.display='block'; pinErr.textContent='تم الإغلاق المؤقت لمدة 60 ثانية بسبب 3 محاولات خاطئة.';
       } else {
-        pinErr.style.display='block'; pinErr.textContent='الرقم السري غير صحيح. المحاولة: '+state.pinFail[whoKey]+'/3';
+        pinErr.style.display='block'; pinErr.textContent='الرقم السري غير صحيح. المحاولة: '+pinFail[whoKey]+'/3';
       }
     }
   }
 
-  // ------------------ أدوات عامة ------------------
-  function escapeHtml(s){ return s.replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
-
-  // ------------------ بدء التطبيق ------------------
+  // ========== 16) بدء التطبيق ==========
   document.getElementById('year').textContent = new Date().getFullYear();
   handleRoute();
-  
-  // ------------------ نسخ احتياطي/استرجاع (مزامنة يدوية) ------------------
-  function exportData(){
-    const data = JSON.stringify(state, null, 2);
-    const blob = new Blob([data], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    const ts = new Date().toISOString().replace(/[:.]/g,'-');
-    a.download = `wsb-backup-${ts}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-  function importData(){
-    const txt = prompt('الصق هنا محتوى JSON الذي تم تصديره من جهاز آخر ثم اضغط موافق:');
-    if (!txt) return;
-    try{
-      const obj = JSON.parse(txt);
-      // تحقق مفاتيح أساسية
-      if (!obj.accounts || !obj.txs) throw new Error('صيغة غير صحيحة');
-      // استبدال الحالة
-      Object.keys(state).forEach(k=> delete state[k]);
-      Object.assign(state, obj);
-      save();
-      alert('تم الاسترجاع بنجاح. سيتم تحديث الواجهات الآن.');
-      renderAdmin(); renderHome();
-    }catch(e){
-      alert('فشل الاسترجاع: '+ (e.message||e));
-    }
-  }
-
-</script>
+  </script>
 </body>
 </html>
