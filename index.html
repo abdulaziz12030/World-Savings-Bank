@@ -84,33 +84,25 @@
 
   <footer>© <span id="year"></span> محفظة الادخار العالمية</footer>
 
-  <!-- Firebase SDKs (Compat to expose global 'firebase') -->
+  <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <script> 
-    Firebase console > Project settings > SDK setup & config)
- // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyCRbgTA1eSWO-9NCdlKgZH3fHG714Y_nU4",
-  authDomain: "world-savings-bank.firebaseapp.com",
-  projectId: "world-savings-bank",
-  storageBucket: "world-savings-bank.firebasestorage.app",
-  messagingSenderId: "665051350356",
-  appId: "1:665051350356:web:2c72e6bbd9cf64c11674c1",
-  measurementId: "G-K0839SW849"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+  <script>
+  // ========== 1) إعداد Firebase ==========
+  // ⚠️ غيّر القيم أدناه بقيم مشروعك من Firebase Console → Project settings → Web app
+  const firebaseConfig = {
+    apiKey: "PASTE_YOUR_API_KEY",
+    authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://PASTE_YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "PASTE_YOUR_PROJECT",
+    storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+    messagingSenderId: "000000000000",
+    appId: "1:000000000000:web:xxxxxxxxxxxxxxxxxxxxxx"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const DB_ROOT = 'wsb/state';
 
   // ========== 2) صور الحسابات ==========
   const IMG = {
@@ -126,7 +118,7 @@ const analytics = getAnalytics(app);
       omar:   { id:'omar',   name:'عمر',  balance:0, goal:{ title:'', amount:0, approved:false } },
       shahad: { id:'shahad', name:'شهد', balance:0, goal:{ title:'', amount:0, approved:false } }
     },
-    txs: [] // {id, accountId, type, amount, note?, counterparty?, createdAt(ms), status:'pending'|'approved'|'rejected', pair?}
+    txs: []
   };
 
   // ========== 4) أدوات عامة ==========
@@ -138,29 +130,24 @@ const analytics = getAnalytics(app);
   function escapeHtml(s){ return s.replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c])); }
 
   // ========== 5) تحميل الحالة ومزامنتها لحظيًا ==========
-  let state = JSON.parse(JSON.stringify(defaults)); // نسخة محلية للعمل
+  let state = JSON.parse(JSON.stringify(defaults));
   const stateRef = db.ref(DB_ROOT);
 
-  // أول تشغيل: لو لا توجد بيانات في DB، اكتب الافتراضي
   stateRef.get().then(snap=>{
     if (!snap.exists()){
       return stateRef.set(defaults);
     }
   });
 
-  // استمع لأي تغيير في السحابة وحدث الواجهة
   stateRef.on('value', (snap)=>{
     const cloud = snap.val();
     state = Object.assign({}, defaults, cloud || {});
-    // ترتيب txs بالأحدث أولًا (createdAt أكبر أولًا)
     if (Array.isArray(state.txs)) state.txs = state.txs.filter(Boolean);
     else if (typeof state.txs === 'object') state.txs = Object.values(state.txs);
     state.txs.sort((a,b)=> (b.createdAt||0) - (a.createdAt||0));
-    // إعادة الرسم حسب المسار
     handleRoute();
   });
 
-  // كتابة كاملة (بسيطة) — مناسبة لمشروع صغير. (يمكن لاحقًا تحويلها لتحديثات جزئية for scale)
   function writeState(next){
     const merged = Object.assign({}, state, next||{});
     return stateRef.set(merged);
@@ -187,7 +174,7 @@ const analytics = getAnalytics(app);
     }
   }
 
-  // ========== 7) واجهة الرئيسية ==========
+  // ========== 7) الرئيسية ==========
   function goalProgress(a){
     const g = a.goal||{amount:0,approved:false}; if (!g.amount) return 0;
     const p = Math.max(0, Math.min(100, Math.round((a.balance / g.amount)*100)));
@@ -236,7 +223,7 @@ const analytics = getAnalytics(app);
     `;
   }
 
-  // ========== 8) واجهة الحساب ==========
+  // ========== 8) صفحة الحساب ==========
   function renderAccount(id){
     const acc = state.accounts[id];
     const g = acc.goal || {title:'',amount:0,approved:false};
@@ -318,7 +305,6 @@ const analytics = getAnalytics(app);
         </div>
       </section>
     `;
-    // Tabs behavior
     const tabDep = document.getElementById('tab-dep');
     const tabExp = document.getElementById('tab-exp');
     const tabTrf = document.getElementById('tab-trf');
@@ -481,19 +467,17 @@ const analytics = getAnalytics(app);
       </section>
     `;
 
-    // Show/hide "to" for transfer
     const selType = document.getElementById('ad-type');
     const toWrap = document.getElementById('ad-to-wrap');
     selType.addEventListener('change', ()=>{
       toWrap.style.display = selType.value==='transfer' ? 'block' : 'none';
     });
 
-    // Tabs behavior
     document.getElementById('tab-pending').onclick = ()=>switchTxTab('pending');
     document.getElementById('tab-approved').onclick = ()=>switchTxTab('approved');
     document.getElementById('tab-rejected').onclick = ()=>switchTxTab('rejected');
 
-    renderAdminTx(); // default pending
+    renderAdminTx();
     renderGoalRequests();
   }
 
@@ -621,9 +605,8 @@ const analytics = getAnalytics(app);
     `;
   }
 
-  // ========== 11) إنشاء الطلبات (بانتظار موافقة) ==========
+  // ========== 11) إنشاء الطلبات ==========
   function pushTx(tx){
-    // نخزن txs كمصفوفة بسيطة (بما أن المشروع صغير) — نكتب الحالة كاملة
     state.txs.unshift(tx);
     return writeState({ txs: state.txs });
   }
@@ -658,7 +641,6 @@ const analytics = getAnalytics(app);
       outTx.pair = inTx.id;
       list.push(inTx);
     }
-    // أضف الاثنين معًا للأعلى
     state.txs = list.concat(state.txs);
     writeState({ txs: state.txs }).then(()=> alert('تم إرسال طلب التحويل للآدمن للموافقة.'));
   }
@@ -677,7 +659,6 @@ const analytics = getAnalytics(app);
     }
     t.status = 'approved';
 
-    // موافقة القرين في التحويل
     if ((t.type==='transfer-in' || t.type==='transfer-out') && t.pair){
       const p = (state.txs||[]).find(x=>x.id===t.pair);
       if (p && p.status==='pending'){
@@ -702,7 +683,7 @@ const analytics = getAnalytics(app);
     writeState({ txs: state.txs });
   }
 
-  // ========== 13) تنفيذ مباشر بواسطة الآدمن (موافقة فورية) ==========
+  // ========== 13) تنفيذ مباشر بواسطة الآدمن ==========
   function adminExecute(){
     const type = document.getElementById('ad-type').value;
     const from = document.getElementById('ad-from').value;
@@ -760,9 +741,7 @@ const analytics = getAnalytics(app);
     writeState({ accounts: state.accounts });
   }
 
-  // ========== 15) PIN مع إغلاق مؤقت محلي (واجهة فقط) ==========
-  // ملاحظة: PIN هنا يُتحقق منه ضد الحالة في Firebase دون تشفير — للاستخدام العائلي فقط.
-  // في الإنتاج يجب استخدام Auth Rules/Cloud Functions.
+  // ========== 15) PIN (واجهة) ==========
   const ovl = document.getElementById('pin-overlay');
   const pinInput = document.getElementById('pin-input');
   const pinDesc = document.getElementById('pin-desc');
@@ -796,7 +775,7 @@ const analytics = getAnalytics(app);
     } else {
       pinFail[whoKey] = (pinFail[whoKey]||0) + 1;
       if (pinFail[whoKey] >= 3){
-        lockUntil[whoKey] = Date.now()+60000; // إغلاق دقيقة
+        lockUntil[whoKey] = Date.now()+60000;
         pinErr.style.display='block'; pinErr.textContent='تم الإغلاق المؤقت لمدة 60 ثانية بسبب 3 محاولات خاطئة.';
       } else {
         pinErr.style.display='block'; pinErr.textContent='الرقم السري غير صحيح. المحاولة: '+pinFail[whoKey]+'/3';
@@ -807,6 +786,17 @@ const analytics = getAnalytics(app);
   // ========== 16) بدء التطبيق ==========
   document.getElementById('year').textContent = new Date().getFullYear();
   handleRoute();
+
+  // أدوات مساعدة صغيرة (تأكيد تصفير)
+  function confirmReset(type){
+    if (!confirm('تأكيد العملية؟ لا يمكن التراجع.')) return;
+    if (type==='txs'){ state.txs = []; }
+    if (type==='balances'){
+      state.accounts.omar.balance = 0;
+      state.accounts.shahad.balance = 0;
+    }
+    writeState({ accounts: state.accounts, txs: state.txs });
+  }
   </script>
 </body>
 </html>
