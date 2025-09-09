@@ -1,4 +1,3 @@
-
 'use client';
 import { useStore, AccountId } from '../lib/store';
 
@@ -25,8 +24,14 @@ export default function TransactionList({ accountId }: { accountId?: AccountId }
             <div className="text-gray-500">{formatDate(t.createdAt)}</div>
             {t.note && <div className="text-gray-600 mt-1">ملاحظة: {t.note}</div>}
           </div>
-          <div className={`font-extrabold tabular-nums ${t.type in {expense:1,'transfer-out':1} ? 'text-red-600' : 'text-green-700'}`}>
-            {t.type in {expense:1,'transfer-out':1} ? '-' : '+'}{t.amount.toLocaleString('ar-SA')} ر.س
+          <div
+            className={
+              `font-extrabold tabular-nums ${
+                ['expense','transfer-out'].includes(t.type) ? 'text-red-600' : 'text-green-700'
+              }`
+            }
+          >
+            {['expense','transfer-out'].includes(t.type) ? '-' : '+'}{t.amount.toLocaleString('ar-SA')} ر.س
           </div>
         </div>
       ))}
