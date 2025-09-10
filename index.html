@@ -3,31 +3,30 @@
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
-  <title>محفظة الادخار العالمية</title>
+  <title>محفظة الادخار العالمية — مزامنة Firebase</title>
   <style>
     :root{
-      --w50:#eff6ff;--w100:#dbeafe;--w700:#1d4ed8;--w800:#1e40af;
-      --text:#0f172a;--muted:#64748b;--bg:#f6f8fc;--border:#e5e7eb;
-      --red:#dc2626;--green:#065f46;--card:#fff;
+      --wblue-50:#eff6ff;--wblue-100:#dbeafe;--wblue-600:#2563eb;--wblue-700:#1d4ed8;--wblue-800:#1e40af;
+      --text:#0f172a;--muted:#64748b;--bg:#f6f8fc;--border:#e5e7eb;--red:#dc2626;--green:#065f46;--amber:#b45309;--card:#fff;
     }
     *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);
       font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Kufi Arabic","Noto Naskh Arabic",Arial}
     .container{max-width:1100px;margin:0 auto;padding:24px}
-    header{background:var(--w800);color:#fff}
+    header{background:var(--wblue-800);color:#fff}
     header .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px}
     .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
-    .btn{border:0;background:var(--w700);color:#fff;padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer}
+    .btn{border:0;background:var(--wblue-700);color:#fff;padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer}
     .btn.ghost{background:#eef2ff;color:#1e3a8a} .btn.warn{background:#fef3c7;color:#92400e}
     .btn.danger{background:#fee2e2;color:#991b1b} .muted{color:var(--muted)}
     .grid{display:grid;gap:16px} .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
     .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))} .row{display:flex;align-items:center;gap:10px}
-    .badge{display:inline-block;background:var(--w100);color:var(--w800);padding:2px 8px;border-radius:999px;font-size:12px}
+    .badge{display:inline-block;background:var(--wblue-100);color:var(--wblue-800);padding:2px 8px;border-radius:999px;font-size:12px}
     .list{display:grid;gap:10px} .list .item{display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
     .input,select{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;outline:none}
-    .input:focus,select:focus{box-shadow:0 0 0 3px rgba(37,99,235,.2);border-color:var(--w700)}
+    .input:focus,select:focus{box-shadow:0 0 0 3px rgba(37,99,235,.2);border-color:var(--wblue-600)}
     .tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap} .tab{padding:8px 12px;border-radius:12px;background:#e5e7eb;font-weight:700}
-    .tab.active{background:var(--w100);color:var(--w800)}
-    .progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden} .progress>div{height:100%;background:linear-gradient(90deg,var(--w700),#2563eb)}
+    .tab.active{background:var(--wblue-100);color:var(--wblue-800)}
+    .progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden} .progress>div{height:100%;background:linear-gradient(90deg,var(--wblue-700),var(--wblue-600))}
     .avatar{width:64px;height:64px;border-radius:999px;object-fit:cover;border:1px solid #c7d2fe;background:#fff}
     .avatar-lg{width:80px;height:80px;border-radius:999px;object-fit:cover;border:2px solid #c7d2fe;background:#fff}
     .money{font-variant-numeric:tabular-nums} .danger{color:var(--red)} .success{color:var(--green)} .tiny{font-size:12px}
@@ -72,13 +71,13 @@
 
 <footer>© <span id="year"></span> محفظة الادخار العالمية</footer>
 
-<!-- Firebase compat SDKs -->
+<!-- Firebase compat (الأبسط للدمج في ملف واحد) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-/*** 0) إعداد Firebase — بدّل ADMIN_UID لاحقًا بــ UID عبدالعزيز ***/
+/*** 0) إعداد Firebase ***/
 const firebaseConfig = {
   apiKey: "AIzaSyC-KXnFzEliSECIH4jWI8Hf28eFuWRTn-c",
   authDomain: "world-savings-bank-5df02.firebaseapp.com",
@@ -92,9 +91,8 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.database();
 
-const ADMIN_UID = "PUT_ADMIN_UID_HERE"; // 👈 ضع UID حساب عبدالعزيز هنا
-
 /*** 1) ثوابت وصور ***/
+const ADMIN_UID = "PUT_ADMIN_UID_HERE"; // ← عدّلها لاحقًا ب UID الآدمن
 const IMG = {
   admin: "https://i.postimg.cc/tTSfNWkn/image.jpg",
   omar:  "https://i.postimg.cc/LsmbdN0Z/image.jpg",
@@ -104,34 +102,36 @@ const PINS = { omar:'4000', shahad:'5000', admin:'9000' };
 
 /*** 2) حالة واجهة ***/
 let ACCOUNTS = { omar:{name:'عمر',balance:0,goal:{}}, shahad:{name:'شهد',balance:0,goal:{}} };
-let TX = [];          // العمليات المعتمدة/المرفوضة
-let REQ_TX = {};      // الطلبات (قيد الموافقة)
+let TX = [];          // transactions (approved/rejected records)
+let REQ_TX = {};      // pending requests map
 let user = null;
 
-/*** 3) مصادقة: تسجيل مجهول تلقائيًا للأولاد ***/
+/*** 3) مصادقة: تسجيل مجهول تلقائيًا إن لم يوجد مستخدم ***/
 auth.onAuthStateChanged(async u=>{
   user = u;
   document.getElementById('nav-signout').style.display = u? 'inline-flex':'none';
   document.getElementById('sync-badge').textContent = u? 'متصل':'غير متصل';
   if(!u){ await auth.signInAnonymously(); return; }
-
+  // استماع مباشر لبيانات الحسابات والعمليات
   db.ref('accounts').on('value', snap=>{
-    ACCOUNTS = snap.val() || ACCOUNTS; route();
+    ACCOUNTS = snap.val() || ACCOUNTS;
+    route();
   });
   db.ref('transactions').on('value', snap=>{
     const arr=[]; snap.forEach(c=>arr.push({id:c.key,...c.val()}));
-    TX = arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); route();
+    TX = arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0));
+    route();
   });
   db.ref('requests/transactions').on('value', snap=>{
-    REQ_TX = snap.val() || {}; route();
+    REQ_TX = snap.val() || {};
+    route();
   });
 });
 
-/*** 4) أدوات ***/
+/*** 4) أدوات صغيرة ***/
 const root = document.getElementById('view-root');
 const fmt = n=>Number(n||0).toLocaleString('ar-SA');
 const fmtDate = ms=> new Date(ms).toLocaleString('ar-SA');
-document.getElementById('year').textContent = new Date().getFullYear();
 const uid = ()=> Math.random().toString(36).slice(2)+Date.now().toString(36);
 
 /*** 5) توجيه بسيط ***/
@@ -139,6 +139,8 @@ document.getElementById('nav-home').onclick = ()=>location.hash = '#home';
 document.getElementById('nav-admin').onclick = ()=>location.hash = '#admin';
 document.getElementById('nav-signout').onclick = ()=>auth.signOut();
 window.addEventListener('hashchange', route);
+document.getElementById('year').textContent = new Date().getFullYear();
+
 function route(){
   const h = location.hash.replace('#','') || 'home';
   if(h.startsWith('account=')){
@@ -158,6 +160,7 @@ document.getElementById('pin-cancel').onclick = ()=>{ovl.style.display='none';};
 document.getElementById('pin-ok').onclick = confirmPin;
 let pinTarget='', onPinOk=()=>{};
 const pinFail={omar:0,shahad:0,admin:0}, lockUntil={omar:0,shahad:0,admin:0};
+
 function openWithPin(target, ok){
   pinTarget = target; onPinOk = ok;
   const now=Date.now();
@@ -183,7 +186,7 @@ function goalPct(a){ const g=a.goal||{}; if(!g.amount||!g.approved) return 0;
 function renderHome(){
   const pendingCount = Object.values(REQ_TX).filter(r=>r && r.status!=='rejected' && r.status!=='approved').length;
   root.innerHTML = `
-    <section class="card" style="padding:16px;background:linear-gradient(90deg,var(--w800),var(--w700));color:#fff">
+    <section class="card" style="padding:16px;background:linear-gradient(90deg,var(--wblue-800),var(--wblue-700));color:#fff">
       <div style="font-weight:700">مرحبًا!</div>
       <div class="tiny" style="color:#e5e7eb">اختر الحساب لإرسال طلباتك أو ادخل لوحة الآدمن للموافقة.</div>
       ${pendingCount? `<div class="badge" style="margin-top:6px;background:#fff;color:#111827">طلبات قيد الموافقة: ${pendingCount}</div>`:''}
@@ -320,7 +323,7 @@ function renderTxList(accountId, limit){
   let list = TX.slice();
   if(accountId) list = list.filter(t=> t.accountId===accountId);
   if(limit) list = list.slice(0,limit);
-  if(list.length===0) return `<div class="card" style="padding:14px">لا توجد عمليات</div>`;
+  if(list.length===0) return `<div class="card" style="padding:14px" class="empty">لا توجد عمليات</div>`;
   return `<div class="list">${
     list.map(t=>{
       const {label,sign,cls} = txLabel(t);
@@ -346,6 +349,7 @@ async function approveReq(id){
   const snap = await db.ref('requests/transactions/'+id).get();
   if(!snap.exists()) return;
   const r = snap.val();
+  // تعديل الأرصدة باستخدام transaction لضمان التزامن
   const fromRef = db.ref('accounts/'+r.accountId+'/balance');
   if(r.type==='deposit'){
     await fromRef.transaction(x=>(x||0)+r.amount);
@@ -404,8 +408,8 @@ function renderAdmin(){
       </div>
       ${!isAdmin ? `
         <div class="card" style="padding:16px;margin-top:12px">
-          <div class="tiny muted" style="margin-bottom:6px">تسجيل دخول الآدمن</div>
-          <input class="input" id="ad-email" type="email" placeholder="بريد الآدمن" value="abdulaziz.algharawi@gmail.com"/>
+          <div class="muted tiny" style="margin-bottom:6px">تسجيل دخول الآدمن</div>
+          <input class="input" id="ad-email" type="email" placeholder="بريد الآدمن"/>
           <input class="input" id="ad-pass"  type="password" placeholder="كلمة المرور" style="margin-top:8px"/>
           <button class="btn" style="margin-top:10px" onclick="adminSignIn(document.getElementById('ad-email').value, document.getElementById('ad-pass').value)">دخول</button>
           <div class="tiny muted" style="margin-top:6px">بعد الدخول الصحيح، يمكن الموافقة/الرفض وتعديل الأرصدة.</div>
@@ -465,6 +469,7 @@ function renderAdmin(){
   `;
 
   if(isAdmin){
+    // تحميل طلبات الأهداف وعرضها
     Promise.all(['omar','shahad'].map(id=> db.ref('requests/goals/'+id).get().then(s=>({id, val:s.val()||{}})))).then(all=>{
       const items=[];
       all.forEach(({id,val})=>{
