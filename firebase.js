@@ -1,7 +1,4 @@
-<script>
-// === firebase.js ===
-// تهيئة Firebase وتمرير مراجع عامة عبر window.App
-
+// firebase.js
 const firebaseConfig = {
   apiKey: "AIzaSyC-KXnFzEliSECIH4jWI8Hf28eFuWRTn-c",
   authDomain: "world-savings-bank-5df02.firebaseapp.com",
@@ -16,12 +13,17 @@ firebase.initializeApp(firebaseConfig);
 window.App = {
   auth: firebase.auth(),
   db: firebase.database(),
-  ADMIN_UID: "PUT_ADMIN_UID_HERE", // 👈 بدّلها ب UID الآدمن
+
+  // بريد الآدمن المعتمد للصلاحيات:
+  ADMIN_EMAIL: "abdulaziz.algharawi@gmail.com",
+
+  // صور الحسابات:
   IMG: {
     admin: "https://i.postimg.cc/tTSfNWkn/image.jpg",
     omar:  "https://i.postimg.cc/LsmbdN0Z/image.jpg",
     shahad: "https://i.postimg.cc/d1xHyvQ8/image.jpg"
   },
+
+  // أرقام PIN:
   PINS: { omar:'4000', shahad:'5000', admin:'9000' }
 };
-</script>
