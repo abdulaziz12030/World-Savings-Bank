@@ -1,36 +1,29 @@
 // app.js
+const { auth, db, ADMIN_EMAIL, IMG, PINS } = window.App;
 
-/** مراجع عامة */
-const { auth, db, ADMIN_UID, IMG, PINS } = window.App;
-
-/** حالة واجهة */
 let ACCOUNTS = { omar:{name:'عمر',balance:0,goal:{}}, shahad:{name:'شهد',balance:0,goal:{}} };
-let TX = [];          // العمليات المعتمدة/المرفوضة
-let REQ_TX = {};      // الطلبات قيد الموافقة
+let TX = [];
+let REQ_TX = {};
 let user = null;
 
-/** عناصر DOM مشتركة */
 const root = document.getElementById('view-root');
 const year = document.getElementById('year');
 year.textContent = new Date().getFullYear();
+
 document.getElementById('nav-home').onclick = ()=>location.hash='#home';
 document.getElementById('nav-admin').onclick = ()=>location.hash='#admin';
 document.getElementById('nav-signout').onclick = ()=>auth.signOut();
 window.addEventListener('hashchange', route);
 
-/** أدوات صياغة */
 const fmt = n=>Number(n||0).toLocaleString('ar-SA');
 const fmtDate = ms=> new Date(ms).toLocaleString('ar-SA');
-const uid = ()=> Math.random().toString(36).slice(2)+Date.now().toString(36);
 
-/** مصادقة: تسجيل مجهول تلقائيًا للأولاد */
 auth.onAuthStateChanged(async u=>{
   user = u;
   document.getElementById('nav-signout').style.display = u? 'inline-flex':'none';
   document.getElementById('sync-badge').textContent = u? 'متصل':'غير متصل';
   if(!u){ await auth.signInAnonymously(); return; }
 
-  // الاستماع الحي
   db.ref('accounts').on('value', s=>{ ACCOUNTS = s.val() || ACCOUNTS; route(); });
   db.ref('transactions').on('value', s=>{
     const arr=[]; s.forEach(c=>arr.push({id:c.key,...c.val()}));
@@ -40,7 +33,6 @@ auth.onAuthStateChanged(async u=>{
   db.ref('requests/transactions').on('value', s=>{ REQ_TX = s.val() || {}; route(); });
 });
 
-/** توجيه */
 function route(){
   const h = location.hash.replace('#','') || 'home';
   if(h.startsWith('account=')){
@@ -53,7 +45,7 @@ function route(){
   }
 }
 
-/** مودال PIN */
+/* PIN Modal */
 const ovl = document.getElementById('pin-overlay');
 const pinIn = document.getElementById('pin-input');
 const pinErr = document.getElementById('pin-err');
@@ -82,7 +74,6 @@ function confirmPin(){
   }
 }
 
-/** الرئيسية */
 function goalPct(a){ const g=a.goal||{}; if(!g.amount||!g.approved) return 0; return Math.min(100,Math.max(0,Math.round((a.balance/g.amount)*100))); }
 function renderHome(){
   const pendingCount = Object.values(REQ_TX).filter(r=>r && r.status==='pending').length;
@@ -123,7 +114,6 @@ function renderHome(){
   `;
 }
 
-/** صفحة الحساب */
 async function sendTxRequest(payload){
   if(!payload.amount || payload.amount<=0) return alert('أدخل مبلغ صحيح');
   await db.ref('requests/transactions').push({
@@ -131,6 +121,7 @@ async function sendTxRequest(payload){
   });
   alert('تم إرسال الطلب للآدمن.');
 }
+
 function renderAccount(id){
   const a=ACCOUNTS[id]||{name:id,balance:0,goal:{}}, img=id==='omar'?IMG.omar:IMG.shahad;
   const g=a.goal||{}, p=goalPct(a);
@@ -209,7 +200,6 @@ async function sendGoal(id){
   alert('تم إرسال الهدف للآدمن.');
 }
 
-/** عرض العمليات */
 function txLabel(t){
   if(t.type==='deposit') return {label:'إيداع',sign:'+',cls:'success'};
   if(t.type==='expense') return {label:'مصروف',sign:'-',cls:'danger'};
@@ -218,6 +208,7 @@ function txLabel(t){
   return {label:t.type,sign:'',cls:''};
 }
 function nameOf(x){ return x==='omar'?'عمر':x==='shahad'?'شهد':x==='abdulaziz'?'عبدالعزيز':x; }
+function escapeHtml(s){return s?.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 function renderTxList(accountId, limit){
   let list = TX.slice();
   if(accountId) list = list.filter(t=> t.accountId===accountId);
@@ -237,15 +228,14 @@ function renderTxList(accountId, limit){
     }).join('')
   }</div>`;
 }
-function escapeHtml(s){return s?.replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
 
-/** لوحة الآدمن */
+/* لوحة الآدمن */
 async function adminSignIn(email, password){
   const cred = await auth.signInWithEmailAndPassword(email, password);
-  if(cred.user.uid !== ADMIN_UID){ alert('هذا الحساب ليس آدمن'); await auth.signOut(); }
+  if(cred.user.email !== ADMIN_EMAIL){ alert('هذا الحساب ليس آدمن'); await auth.signOut(); }
 }
 async function approveReq(id){
-  if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
+  if(!user || user.email!==ADMIN_EMAIL) return alert('صلاحيات غير كافية');
   const snap = await db.ref('requests/transactions/'+id).get(); if(!snap.exists()) return;
   const r = snap.val();
   const fromRef = db.ref('accounts/'+r.accountId+'/balance');
@@ -271,25 +261,24 @@ async function approveReq(id){
   await db.ref('requests/transactions/'+id+'/status').set('approved');
 }
 async function rejectReq(id){
-  if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
+  if(!user || user.email!==ADMIN_EMAIL) return alert('صلاحيات غير كافية');
   await db.ref('requests/transactions/'+id+'/status').set('rejected');
   const r = (await db.ref('requests/transactions/'+id).get()).val();
   await db.ref('transactions/'+id).set({...r, status:'rejected'});
 }
-
 async function approveGoal(id, reqKey){
-  if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
+  if(!user || user.email!==ADMIN_EMAIL) return alert('صلاحيات غير كافية');
   const r = (await db.ref('requests/goals/'+id+'/'+reqKey).get()).val(); if(!r) return;
   await db.ref('accounts/'+id+'/goal').set({title:r.title,amount:r.amount,approved:true});
   await db.ref('requests/goals/'+id+'/'+reqKey+'/status').set('approved');
 }
 async function rejectGoal(id, reqKey){
-  if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
+  if(!user || user.email!==ADMIN_EMAIL) return alert('صلاحيات غير كافية');
   await db.ref('requests/goals/'+id+'/'+reqKey+'/status').set('rejected');
 }
 
 function renderAdmin(){
-  const isAdmin = user && user.uid===ADMIN_UID;
+  const isAdmin = user && user.email===ADMIN_EMAIL;
   const pending = Object.entries(REQ_TX).filter(([k,v])=>v && v.status==='pending');
   root.innerHTML = `
     <section class="card" style="padding:16px">
@@ -307,7 +296,7 @@ function renderAdmin(){
       ${!isAdmin ? `
         <div class="card" style="padding:16px;margin-top:12px">
           <div class="tiny muted" style="margin-bottom:6px">تسجيل دخول الآدمن</div>
-          <input class="input" id="ad-email" type="email" placeholder="بريد الآدمن" value="abdulaziz.algharawi@gmail.com"/>
+          <input class="input" id="ad-email" type="email" placeholder="بريد الآدمن" value="${ADMIN_EMAIL}"/>
           <input class="input" id="ad-pass"  type="password" placeholder="كلمة المرور" style="margin-top:8px"/>
           <button class="btn" style="margin-top:10px" onclick="adminSignIn(document.getElementById('ad-email').value, document.getElementById('ad-pass').value)">دخول</button>
           <div class="tiny muted" style="margin-top:6px">بعد الدخول الصحيح، يمكن الموافقة/الرفض وتعديل الأرصدة.</div>
