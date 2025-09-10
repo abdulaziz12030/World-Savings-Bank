@@ -1,163 +1,475 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>محفظة الادخار العالمية</title>
   <style>
-    body { font-family: sans-serif; background: #f5f7fb; margin: 0; }
-    header { background: #1e3a8a; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { margin: 0; font-size: 20px; }
-    .container { max-width: 700px; margin: 30px auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .card { border: 1px solid #ddd; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    input, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #ccc; }
-    button { background: #1e3a8a; color: white; cursor: pointer; }
-    button:hover { background: #3b82f6; }
-    .hidden { display: none; }
-    .balance { font-weight: bold; font-size: 18px; margin-top: 10px; }
+    :root{
+      --w50:#eff6ff;--w100:#dbeafe;--w700:#1d4ed8;--w800:#1e40af;
+      --text:#0f172a;--muted:#64748b;--bg:#f6f8fc;--border:#e5e7eb;
+      --red:#dc2626;--green:#065f46;--card:#fff;
+    }
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);
+      font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Noto Kufi Arabic","Noto Naskh Arabic",Arial}
+    .container{max-width:1100px;margin:0 auto;padding:24px}
+    header{background:var(--w800);color:#fff}
+    header .bar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 24px}
+    .card{background:var(--card);border:1px solid var(--border);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.06)}
+    .btn{border:0;background:var(--w700);color:#fff;padding:10px 14px;border-radius:12px;font-weight:700;cursor:pointer}
+    .btn.ghost{background:#eef2ff;color:#1e3a8a} .btn.warn{background:#fef3c7;color:#92400e}
+    .btn.danger{background:#fee2e2;color:#991b1b} .muted{color:var(--muted)}
+    .grid{display:grid;gap:16px} .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))} .row{display:flex;align-items:center;gap:10px}
+    .badge{display:inline-block;background:var(--w100);color:var(--w800);padding:2px 8px;border-radius:999px;font-size:12px}
+    .list{display:grid;gap:10px} .list .item{display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--border);border-radius:12px;background:#fff}
+    .input,select{width:100%;padding:12px;border:1px solid var(--border);border-radius:12px;outline:none}
+    .input:focus,select:focus{box-shadow:0 0 0 3px rgba(37,99,235,.2);border-color:var(--w700)}
+    .tabs{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap} .tab{padding:8px 12px;border-radius:12px;background:#e5e7eb;font-weight:700}
+    .tab.active{background:var(--w100);color:var(--w800)}
+    .progress{height:10px;background:#e5e7eb;border-radius:999px;overflow:hidden} .progress>div{height:100%;background:linear-gradient(90deg,var(--w700),#2563eb)}
+    .avatar{width:64px;height:64px;border-radius:999px;object-fit:cover;border:1px solid #c7d2fe;background:#fff}
+    .avatar-lg{width:80px;height:80px;border-radius:999px;object-fit:cover;border:2px solid #c7d2fe;background:#fff}
+    .money{font-variant-numeric:tabular-nums} .danger{color:var(--red)} .success{color:var(--green)} .tiny{font-size:12px}
+    footer{color:#94a3b8;font-size:13px;text-align:center;padding:28px 10px}
+    @media (max-width:900px){.grid-3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media (max-width:700px){.grid-2,.grid-3{grid-template-columns:1fr}}
+    .overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;place-items:center;padding:20px;z-index:40}
+    .modal{width:100%;max-width:420px;background:#fff;border-radius:16px;padding:20px}
   </style>
 </head>
 <body>
-  <header>
-    <h1>💰 محفظة الادخار العالمية</h1>
-    <span id="status">غير متصل</span>
-  </header>
-
-  <div class="container">
-    <!-- تسجيل الدخول -->
-    <div id="loginCard" class="card">
-      <h2>تسجيل دخول</h2>
-      <div>
-        <label>بريد الآدمن</label>
-        <input type="email" id="adminEmail" placeholder="بريد الآدمن">
-        <label>كلمة المرور</label>
-        <input type="password" id="adminPassword" placeholder="كلمة المرور">
-        <button onclick="loginAdmin()">دخول الآدمن</button>
-      </div>
-      <hr>
-      <div>
-        <label>PIN (عمر/شهد)</label>
-        <input type="password" id="pin" placeholder="أدخل الرقم السري">
-        <button onclick="loginPin()">دخول</button>
-      </div>
+<header>
+  <div class="bar container">
+    <div class="row">
+      <img src="https://i.postimg.cc/tTSfNWkn/image.jpg" class="avatar" alt="عبدالعزيز"/>
+      <strong>محفظة الادخار العالمية</strong>
+      <span id="sync-badge" class="badge">جارِ الاتصال…</span>
     </div>
-
-    <!-- لوحة الحساب -->
-    <div id="accountCard" class="card hidden">
-      <h2 id="accountName">الحساب</h2>
-      <div class="balance">الرصيد: <span id="balance">0</span> ريال</div>
-      <label>المبلغ</label>
-      <input type="number" id="amount" placeholder="أدخل المبلغ">
-      <label>ملاحظة</label>
-      <input type="text" id="note" placeholder="ملاحظة">
-      <button onclick="deposit()">إيداع</button>
-      <button onclick="withdraw()">مصروف</button>
-    </div>
-
-    <!-- لوحة الآدمن -->
-    <div id="adminCard" class="card hidden">
-      <h2>لوحة الآدمن</h2>
-      <div id="allBalances"></div>
-    </div>
+    <nav class="row" style="gap:12px">
+      <button class="btn ghost" id="nav-home">الرئيسية</button>
+      <button class="btn ghost" id="nav-admin">لوحة الآدمن</button>
+      <button class="btn ghost" id="nav-signout" style="display:none">تسجيل خروج</button>
+    </nav>
   </div>
+</header>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<main class="container" id="view-root"></main>
 
-  <script>
-    // إعداد Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyC-KXnFzEliSEClH4jWI8Hf28eFuWRTn-c",
-      authDomain: "world-savings-bank-5df02.firebaseapp.com",
-      databaseURL: "https://world-savings-bank-5df02-default-rtdb.firebaseio.com/",
-      projectId: "world-savings-bank-5df02",
-      storageBucket: "world-savings-bank-5df02.appspot.com",
-      messagingSenderId: "361127802397",
-      appId: "1:361127802397:web:cb0cc9dfa6d5d2db4238f4"
-    };
-    firebase.initializeApp(firebaseConfig);
+<!-- PIN Modal -->
+<div class="overlay" id="pin-overlay">
+  <div class="modal card">
+    <h3 style="margin:0 0 6px 0">أدخل الرقم السري</h3>
+    <div class="tiny muted" id="pin-desc" style="margin-bottom:8px"></div>
+    <input class="input" id="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="أربع خانات"/>
+    <div class="row" style="margin-top:12px;gap:8px">
+      <button class="btn" id="pin-ok">تأكيد</button>
+      <button class="btn" id="pin-cancel">إلغاء</button>
+    </div>
+    <div class="tiny danger" id="pin-err" style="display:none;margin-top:6px"></div>
+  </div>
+</div>
 
-    const auth = firebase.auth();
-    const db = firebase.database();
+<footer>© <span id="year"></span> محفظة الادخار العالمية</footer>
 
-    const ADMIN_EMAIL = "abdulaziz.algharawi@gmail.com";
-    let currentUser = null;
+<!-- Firebase compat SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-    // تسجيل دخول الآدمن
-    function loginAdmin() {
-      const email = document.getElementById("adminEmail").value;
-      const pass = document.getElementById("adminPassword").value;
-      auth.signInWithEmailAndPassword(email, pass)
-        .then(user => {
-          if (email === ADMIN_EMAIL) {
-            document.getElementById("status").textContent = "آدمن ✅";
-            document.getElementById("loginCard").classList.add("hidden");
-            document.getElementById("adminCard").classList.remove("hidden");
-            loadAllBalances();
-          } else {
-            alert("هذا الحساب ليس آدمن");
-            auth.signOut();
-          }
-        })
-        .catch(err => alert("خطأ: " + err.message));
+<script>
+/*** 0) إعداد Firebase — عدّل ADMIN_UID بــ UID الآدمن ***/
+const firebaseConfig = {
+  apiKey: "AIzaSyC-KXnFzEliSECIH4jWI8Hf28eFuWRTn-c",
+  authDomain: "world-savings-bank-5df02.firebaseapp.com",
+  databaseURL: "https://world-savings-bank-5df02-default-rtdb.firebaseio.com",
+  projectId: "world-savings-bank-5df02",
+  storageBucket: "world-savings-bank-5df02.appspot.com",
+  messagingSenderId: "361127802397",
+  appId: "1:361127802397:web:cb0cc9dfa6d5d2db4238f4"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db   = firebase.database();
+const ADMIN_UID = "PUT_ADMIN_UID_HERE";
+
+/*** 1) صور و PINs ***/
+const IMG = {
+  admin: "https://i.postimg.cc/tTSfNWkn/image.jpg",
+  omar:  "https://i.postimg.cc/LsmbdN0Z/image.jpg",
+  shahad:"https://i.postimg.cc/d1xHyvQ8/image.jpg"
+};
+const PINS = { omar:'4000', shahad:'5000', admin:'9000' };
+
+/*** 2) حالة ***/
+let ACCOUNTS = { omar:{name:'عمر',balance:0,goal:{}}, shahad:{name:'شهد',balance:0,goal:{}} };
+let TX = []; let REQ_TX = {}; let user = null;
+
+/*** 3) مصادقة — تسجيل مجهول تلقائيًا للأطفال ***/
+auth.onAuthStateChanged(async u=>{
+  user = u;
+  document.getElementById('nav-signout').style.display = u? 'inline-flex':'none';
+  document.getElementById('sync-badge').textContent = u? 'متصل':'غير متصل';
+  if(!u){ await auth.signInAnonymously(); return; }
+  db.ref('accounts').on('value', s=>{ ACCOUNTS = s.val() || ACCOUNTS; route(); });
+  db.ref('transactions').on('value', s=>{ const a=[]; s.forEach(c=>a.push({id:c.key,...c.val()})); TX=a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); route(); });
+  db.ref('requests/transactions').on('value', s=>{ REQ_TX = s.val() || {}; route(); });
+});
+
+/*** 4) أدوات ***/
+const root = document.getElementById('view-root');
+const fmt = n=>Number(n||0).toLocaleString('ar-SA');
+const fmtDate = ms=> new Date(ms).toLocaleString('ar-SA');
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/*** 5) توجيه / تنقل ***/
+document.getElementById('nav-home').onclick = ()=>location.hash = '#home';
+document.getElementById('nav-admin').onclick = ()=>location.hash = '#admin';
+document.getElementById('nav-signout').onclick = ()=>auth.signOut();
+window.addEventListener('hashchange', route);
+function route(){
+  const h = location.hash.replace('#','') || 'home';
+  if(h.startsWith('account=')){
+    const id = h.split('=')[1];
+    openWithPin(id, ()=> renderAccount(id));
+  }else if(h==='admin'){
+    openWithPin('admin', ()=> renderAdmin());
+  }else{
+    renderHome();
+  }
+}
+
+/*** 6) مودال PIN ***/
+const ovl = document.getElementById('pin-overlay'), pinIn = document.getElementById('pin-input'),
+      pinErr = document.getElementById('pin-err'), pinDesc = document.getElementById('pin-desc');
+document.getElementById('pin-cancel').onclick = ()=>{ovl.style.display='none';};
+document.getElementById('pin-ok').onclick = confirmPin;
+let pinTarget='', onPinOk=()=>{};
+const pinFail={omar:0,shahad:0,admin:0}, lockUntil={omar:0,shahad:0,admin:0};
+function openWithPin(target, ok){
+  pinTarget = target; onPinOk = ok;
+  const now=Date.now();
+  if(lockUntil[target] && now<lockUntil[target]){ alert('محاولات كثيرة خاطئة. حاول لاحقًا.'); return; }
+  pinDesc.textContent = target==='admin'? 'لوحة عبدالعزيز' : `حساب ${target==='omar'?'عمر':'شهد'}`;
+  pinIn.value=''; pinErr.style.display='none'; ovl.style.display='grid'; setTimeout(()=>pinIn.focus(),40);
+}
+function confirmPin(){
+  const v = pinIn.value.trim();
+  if(v === PINS[pinTarget]){ pinFail[pinTarget]=0; ovl.style.display='none'; onPinOk(); }
+  else{
+    pinFail[pinTarget]=(pinFail[pinTarget]||0)+1;
+    if(pinFail[pinTarget]>=3){ lockUntil[pinTarget]=Date.now()+60000; pinErr.textContent='تم الإغلاق 60 ثانية.'; }
+    else pinErr.textContent='خطأ في الرقم السري.';
+    pinErr.style.display='block';
+  }
+}
+
+/*** 7) الرئيسية — بطاقتا عمر وشهد + أحدث العمليات ***/
+function goalPct(a){ const g=a.goal||{}; if(!g.amount||!g.approved) return 0; return Math.min(100,Math.max(0,Math.round((a.balance/g.amount)*100))); }
+function renderHome(){
+  const pendingCount = Object.values(REQ_TX).filter(r=>r && r.status==='pending').length;
+  root.innerHTML = `
+    <section class="card" style="padding:16px;background:linear-gradient(90deg,var(--w800),var(--w700));color:#fff">
+      <div style="font-weight:700">مرحبًا!</div>
+      <div class="tiny" style="color:#e5e7eb">اختر الحساب لإرسال الطلبات أو ادخل لوحة الآدمن للموافقة.</div>
+      ${pendingCount? `<div class="badge" style="margin-top:6px;background:#fff;color:#111827">طلبات قيد الموافقة: ${pendingCount}</div>`:''}
+    </section>
+
+    <section class="grid grid-2" style="margin-top:12px">
+      ${['omar','shahad'].map(id=>{
+        const a=ACCOUNTS[id]||{name:id,balance:0,goal:{}}, img=id==='omar'?IMG.omar:IMG.shahad;
+        const g=a.goal||{}, p=goalPct(a);
+        return `
+          <div class="card" style="padding:16px">
+            <div class="row" style="gap:12px">
+              <img class="avatar" src="${img}" alt="${a.name}"/>
+              <div style="flex:1">
+                <div class="muted tiny">رصيد الحساب</div>
+                <div class="money" style="font-weight:800;font-size:22px">${fmt(a.balance)} ر.س</div>
+                <div class="tiny" style="margin-top:4px;color:#1e3a8a">حساب ${a.name} الإدخاري</div>
+                ${g.amount?`
+                  <div class="tiny muted" style="margin-top:6px">الهدف: ${g.title?g.title+' - ':''}${fmt(g.amount)} ر.س ${g.approved?'<span class="badge">مُعتمد</span>':'<span class="badge" style="background:#fee2e2;color:#991b1b">بانتظار موافقة</span>'}</div>
+                  ${g.approved?`<div class="progress" style="margin-top:6px"><div style="width:${p}%"></div></div><div class="tiny muted">${p}%</div>`:''}
+                `:''}
+              </div>
+              <button class="btn" onclick="location.hash='account=${id}'">فتح</button>
+            </div>
+          </div>`;
+      }).join('')}
+    </section>
+
+    <section style="margin-top:12px">
+      <h3 style="margin:0 0 8px 0">أحدث العمليات</h3>
+      ${renderTxList(null, 6)}
+    </section>
+  `;
+}
+
+/*** 8) صفحة الحساب — تبويبات إيداع/مصروف/تحويل + هدف + سجل ***/
+async function sendTxRequest(payload){
+  if(!payload.amount || payload.amount<=0) return alert('أدخل مبلغ صحيح');
+  await db.ref('requests/transactions').push({ ...payload, createdAt: Date.now(), createdBy: auth.currentUser?.uid||null, status:'pending' });
+  alert('تم إرسال الطلب للآدمن.');
+}
+function renderAccount(id){
+  const a=ACCOUNTS[id]||{name:id,balance:0,goal:{}}, img=id==='omar'?IMG.omar:IMG.shahad;
+  const g=a.goal||{}, p=goalPct(a);
+  root.innerHTML=`
+    <section class="card" style="padding:16px">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:12px">
+          <img class="avatar-lg" src="${img}" alt="${a.name}"/>
+          <div>
+            <div class="muted tiny">رصيد ${a.name}</div>
+            <div class="money" style="font-weight:800;font-size:26px">${fmt(a.balance)} ر.س</div>
+          </div>
+        </div>
+        <button class="btn ghost" onclick="location.hash='#home'">الرئيسية</button>
+      </div>
+    </section>
+
+    <section class="grid grid-2" style="margin-top:12px">
+      <div class="card" style="padding:16px">
+        <div class="tabs">
+          <div class="tab active" id="t-dep">إيداع</div>
+          <div class="tab" id="t-exp">مصروف</div>
+          <div class="tab" id="t-trf">تحويل</div>
+        </div>
+        <div id="f-dep">
+          <input class="input" id="dep-amount" type="number" placeholder="المبلغ بالريال"/>
+          <input class="input" id="dep-note"   type="text"   placeholder="ملاحظة (اختياري)" style="margin-top:8px"/>
+          <button class="btn" style="margin-top:10px" onclick="sendTxRequest({accountId:'${id}',type:'deposit',amount:Number(document.getElementById('dep-amount').value||0),note:document.getElementById('dep-note').value})">إرسال طلب</button>
+        </div>
+        <div id="f-exp" style="display:none">
+          <input class="input" id="exp-amount" type="number" placeholder="المبلغ بالريال"/>
+          <input class="input" id="exp-note"   type="text"   placeholder="ملاحظة (اختياري)" style="margin-top:8px"/>
+          <button class="btn" style="margin-top:10px" onclick="sendTxRequest({accountId:'${id}',type:'expense',amount:Number(document.getElementById('exp-amount').value||0),note:document.getElementById('exp-note').value})">إرسال طلب</button>
+        </div>
+        <div id="f-trf" style="display:none">
+          <input class="input" id="trf-amount" type="number" placeholder="المبلغ بالريال"/>
+          <select class="input" id="trf-to" style="margin-top:8px">
+            <option value="abdulaziz">حساب عبدالعزيز</option>
+            <option value="omar">حساب عمر</option>
+            <option value="shahad">حساب شهد</option>
+          </select>
+          <button class="btn" style="margin-top:10px" onclick="sendTxRequest({accountId:'${id}',type:'transfer',to:document.getElementById('trf-to').value,amount:Number(document.getElementById('trf-amount').value||0)})">إرسال طلب</button>
+        </div>
+
+        <hr style="margin:14px 0;border:none;border-top:1px solid var(--border)"/>
+        <div>
+          <div class="tiny muted" style="margin-bottom:6px">هدف الادخار</div>
+          <input class="input" id="goal-title" type="text" placeholder="عنوان الهدف" value="${g.title||''}"/>
+          <input class="input" id="goal-amount" type="number" placeholder="مبلغ الهدف" value="${g.amount||''}" style="margin-top:8px"/>
+          <button class="btn" style="margin-top:10px" onclick="sendGoal('${id}')">إرسال الهدف للموافقة</button>
+          ${g.approved? `<div class="progress" style="margin-top:8px"><div style="width:${p}%"></div></div><div class="tiny muted">${p}%</div>` : (g.amount? '<div class="tiny muted" style="margin-top:6px">بانتظار موافقة</div>':'')}
+        </div>
+      </div>
+
+      <div class="card" style="padding:16px">
+        <div class="row" style="justify-content:space-between;margin-bottom:8px">
+          <h3 style="margin:0">سجل العمليات</h3>
+          <span class="badge">الحساب: ${a.name}</span>
+        </div>
+        ${renderTxList(id)}
+      </div>
+    </section>
+  `;
+  const tdep=document.getElementById('t-dep'), texp=document.getElementById('t-exp'), ttrf=document.getElementById('t-trf');
+  const fdep=document.getElementById('f-dep'), fexp=document.getElementById('f-exp'), ftrf=document.getElementById('f-trf');
+  tdep.onclick=()=>{tdep.classList.add('active');texp.classList.remove('active');ttrf.classList.remove('active');fdep.style.display='block';fexp.style.display='none';ftrf.style.display='none';};
+  texp.onclick=()=>{texp.classList.add('active');tdep.classList.remove('active');ttrf.classList.remove('active');fexp.style.display='block';fdep.style.display='none';ftrf.style.display='none';};
+  ttrf.onclick=()=>{ttrf.classList.add('active');tdep.classList.remove('active');texp.classList.remove('active');ftrf.style.display='block';fdep.style.display='none';};
+}
+
+async function sendGoal(id){
+  const title=document.getElementById('goal-title').value.trim();
+  const amount=Number(document.getElementById('goal-amount').value||0);
+  if(!amount||amount<=0) return alert('أدخل مبلغ صحيح');
+  await db.ref('requests/goals/'+id).push({title,amount,createdAt:Date.now(),createdBy:user?.uid||null,status:'pending'});
+  alert('تم إرسال الهدف للآدمن.');
+}
+
+/*** 9) عرض العمليات ***/
+function txLabel(t){
+  if(t.type==='deposit') return {label:'إيداع',sign:'+',cls:'success'};
+  if(t.type==='expense') return {label:'مصروف',sign:'-',cls:'danger'};
+  if(t.type==='transfer' && t.direction==='out') return {label:`تحويل - خصم (${nameOf(t.to)})`,sign:'-',cls:'danger'};
+  if(t.type==='transfer' && t.direction==='in')  return {label:`تحويل - إضافة (${nameOf(t.from)})`,sign:'+',cls:'success'};
+  return {label:t.type,sign:'',cls:''};
+}
+function nameOf(x){ return x==='omar'?'عمر':x==='shahad'?'شهد':x==='abdulaziz'?'عبدالعزيز':x; }
+function renderTxList(accountId, limit){
+  let list = TX.slice();
+  if(accountId) list = list.filter(t=> t.accountId===accountId);
+  if(limit) list = list.slice(0,limit);
+  if(list.length===0) return `<div class="card" style="padding:14px">لا توجد عمليات</div>`;
+  return `<div class="list">${
+    list.map(t=>{
+      const {label,sign,cls} = txLabel(t);
+      return `<div class="item">
+        <div>
+          <div style="font-weight:700">${label}</div>
+          <div class="tiny muted">${fmtDate(t.createdAt)}</div>
+          ${t.note? `<div class="tiny" style="margin-top:3px">ملاحظة: ${t.note.replace(/[&<>"]/g, s=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]))}</div>`:''}
+        </div>
+        <div class="money ${cls}" style="font-weight:800">${sign}${fmt(t.amount)} ر.س</div>
+      </div>`;
+    }).join('')
+  }</div>`;
+}
+
+/*** 10) لوحة الآدمن — موافقة/رفض وتعديل الأرصدة ***/
+async function adminSignIn(email, password){
+  const cred = await auth.signInWithEmailAndPassword(email, password);
+  if(cred.user.uid !== ADMIN_UID){ alert('هذا الحساب ليس آدمن'); await auth.signOut(); }
+}
+async function approveReq(id){
+  if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
+  const snap = await db.ref('requests/transactions/'+id).get(); if(!snap.exists()) return;
+  const r = snap.val();
+  const fromRef = db.ref('accounts/'+r.accountId+'/balance');
+  if(r.type==='deposit'){
+    await fromRef.transaction(x=>(x||0)+r.amount);
+    await db.ref('transactions/'+id).set({...r, status:'approved'});
+  }else if(r.type==='expense'){
+    const ok = await fromRef.transaction(x=>{ x=x||0; if(x<r.amount) return; return x-r.amount; });
+    if(!ok.committed) return alert('الرصيد لا يكفي');
+    await db.ref('transactions/'+id).set({...r, status:'approved'});
+  }else if(r.type==='transfer'){
+    const ok = await fromRef.transaction(x=>{ x=x||0; if(x<r.amount) return; return x-r.amount; });
+    if(!ok.committed) return alert('الرصيد لا يكفي');
+    if(r.to==='omar' || r.to==='shahad'){
+      await db.ref('accounts/'+r.to+'/balance').transaction(x=>(x||0)+r.amount);
+      await db.ref('transactions/'+id+'_out').set({...r, direction:'out', status:'approved'});
+      await db.ref('transactions/'+id+'_in').set({ ...r, accountId:r.to, from:r.accountId, direction:'in', status:'approved' });
+    }else{
+      await db.ref('transactions/'+id).set({...r, direction:'out', status:'approved'});
     }
+  }
+  await db.ref('requests/transactions/'+id+'/status').set('approved');
+}
+async function rejectReq(id){
+  if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
+  await db.ref('requests/transactions/'+id+'/status').set('rejected');
+  const r = (await db.ref('requests/transactions/'+id).get()).val();
+  await db.ref('transactions/'+id).set({...r, status:'rejected'});
+}
 
-    // تسجيل دخول PIN
-    function loginPin() {
-      const pin = document.getElementById("pin").value;
-      if (pin === "4000") currentUser = "omar";
-      else if (pin === "5000") currentUser = "shahad";
-      else { alert("PIN غير صحيح"); return; }
+async function approveGoal(id, reqKey){
+  if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
+  const r = (await db.ref('requests/goals/'+id+'/'+reqKey).get()).val(); if(!r) return;
+  await db.ref('accounts/'+id+'/goal').set({title:r.title,amount:r.amount,approved:true});
+  await db.ref('requests/goals/'+id+'/'+reqKey+'/status').set('approved');
+}
+async function rejectGoal(id, reqKey){
+  if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
+  await db.ref('requests/goals/'+id+'/'+reqKey+'/status').set('rejected');
+}
 
-      document.getElementById("status").textContent = currentUser + " ✅";
-      document.getElementById("loginCard").classList.add("hidden");
-      document.getElementById("accountCard").classList.remove("hidden");
-      document.getElementById("accountName").textContent = "حساب " + currentUser;
-      listenBalance();
-    }
+function renderAdmin(){
+  const isAdmin = user && user.uid===ADMIN_UID;
+  const pending = Object.entries(REQ_TX).filter(([k,v])=>v && v.status==='pending');
+  root.innerHTML = `
+    <section class="card" style="padding:16px">
+      <div class="row" style="justify-content:space-between">
+        <div class="row" style="gap:12px">
+          <img class="avatar-lg" src="${IMG.admin}" alt="عبدالعزيز"/>
+          <div>
+            <div class="muted tiny">لوحة الآدمن</div>
+            <div style="font-weight:800">نظرة عامة</div>
+            <div class="tiny muted">طلبات قيد الموافقة: ${pending.length}</div>
+          </div>
+        </div>
+        <button class="btn ghost" onclick="location.hash='#home'">الرئيسية</button>
+      </div>
+      ${!isAdmin ? `
+        <div class="card" style="padding:16px;margin-top:12px">
+          <div class="tiny muted" style="margin-bottom:6px">تسجيل دخول الآدمن</div>
+          <input class="input" id="ad-email" type="email" placeholder="بريد الآدمن" value="abdulaziz.algharawi@gmail.com"/>
+          <input class="input" id="ad-pass"  type="password" placeholder="كلمة المرور" style="margin-top:8px"/>
+          <button class="btn" style="margin-top:10px" onclick="adminSignIn(document.getElementById('ad-email').value, document.getElementById('ad-pass').value)">دخول</button>
+          <div class="tiny muted" style="margin-top:6px">بعد الدخول الصحيح، يمكن الموافقة/الرفض وتعديل الأرصدة.</div>
+        </div>` : `
+        <section class="grid grid-3" style="margin-top:12px">
+          ${['omar','shahad'].map(id=>{
+            const a=ACCOUNTS[id], img=id==='omar'?IMG.omar:IMG.shahad, p=goalPct(a);
+            return `<div class="card" style="padding:16px">
+              <div class="row" style="gap:12px">
+                <img class="avatar" src="${img}" alt="${a.name}"/>
+                <div>
+                  <div class="muted tiny">رصيد ${a.name}</div>
+                  <div class="money" style="font-weight:800;font-size:22px">${fmt(a.balance)} ر.س</div>
+                  ${a.goal?.amount? `<div class="tiny muted" style="margin-top:6px">
+                    الهدف: ${a.goal.title? a.goal.title+' - ':''}${fmt(a.goal.amount)} ر.س ${a.goal.approved? '<span class="badge">مُعتمد</span>':'<span class="badge" style="background:#fee2e2;color:#991b1b">بانتظار موافقة</span>'}
+                  </div>${a.goal.approved? `<div class="progress" style="margin-top:6px"><div style="width:${p}%"></div></div>`:''}`:''}
+                </div>
+              </div>
+              <div class="row" style="gap:8px;margin-top:10px">
+                <button class="btn" onclick="location.hash='account=${id}'">فتح الحساب</button>
+              </div>
+            </div>`;}).join('')}
+          <div class="card" style="padding:16px">
+            <div class="muted tiny">أدوات</div>
+            <div class="row" style="gap:8px;margin-top:8px">
+              <button class="btn warn" onclick="if(confirm('تأكيد تصفير السجلات؟')) db.ref('transactions').remove()">تصفير السجلات</button>
+              <button class="btn danger" onclick="if(confirm('تأكيد تصفير الأرصدة؟')) { db.ref('accounts/omar/balance').set(0); db.ref('accounts/shahad/balance').set(0);}">تصفير الأرصدة</button>
+            </div>
+          </div>
+        </section>
 
-    // إيداع
-    function deposit() {
-      const amount = parseFloat(document.getElementById("amount").value);
-      const note = document.getElementById("note").value;
-      if (amount <= 0) { alert("المبلغ غير صالح"); return; }
-      db.ref("accounts/" + currentUser + "/balance").transaction(b => (b || 0) + amount);
-      db.ref("accounts/" + currentUser + "/history").push({type:"إيداع", amount, note, date: new Date().toLocaleString()});
-    }
+        <section class="card" style="padding:16px;margin-top:12px">
+          <h3 style="margin:0 0 8px 0">طلبات عمليات — بانتظار</h3>
+          ${pending.length? `<div class="list">${
+            pending.map(([id,r])=>`
+              <div class="item">
+                <div>
+                  <div style="font-weight:700">${r.type==='deposit'?'إيداع':r.type==='expense'?'مصروف':'تحويل'} — ${r.accountId==='omar'?'عمر':'شهد'} ${r.to? '→ '+(r.to==='omar'?'عمر':r.to==='shahad'?'شهد':'عبدالعزيز'):''}</div>
+                  <div class="tiny muted">${fmtDate(r.createdAt)}</div>
+                  ${r.note? `<div class="tiny" style="margin-top:3px">ملاحظة: ${r.note}</div>`:''}
+                </div>
+                <div class="row" style="gap:8px">
+                  <div class="money" style="font-weight:800">${fmt(r.amount)} ر.س</div>
+                  <button class="btn" onclick="approveReq('${id}')">موافقة</button>
+                  <button class="btn danger" onclick="rejectReq('${id}')">رفض</button>
+                </div>
+              </div>`).join('')
+          }</div>` : `<div class="card" style="padding:12px">لا توجد طلبات حالية</div>`}
+        </section>
 
-    // مصروف
-    function withdraw() {
-      const amount = parseFloat(document.getElementById("amount").value);
-      const note = document.getElementById("note").value;
-      db.ref("accounts/" + currentUser + "/balance").transaction(b => {
-        if ((b||0) >= amount) {
-          db.ref("accounts/" + currentUser + "/history").push({type:"مصروف", amount, note, date: new Date().toLocaleString()});
-          return b - amount;
-        } else {
-          alert("الرصيد غير كافي"); return b;
-        }
+        <section class="card" style="padding:16px;margin-top:12px">
+          <h3 style="margin:0 0 8px 0">طلبات أهداف الادخار</h3>
+          <div id="goal-reqs"></div>
+        </section>
+        `}
+    </section>
+  `;
+
+  if(isAdmin){
+    Promise.all(['omar','shahad'].map(id=> db.ref('requests/goals/'+id).get().then(s=>({id, val:s.val()||{}})))).then(all=>{
+      const items=[];
+      all.forEach(({id,val})=>{
+        Object.entries(val).forEach(([k,g])=>{
+          if(g.status==='approved') return;
+          items.push({acc:id, key:k, ...g});
+        });
       });
-    }
-
-    // متابعة الرصيد للحساب
-    function listenBalance() {
-      db.ref("accounts/" + currentUser + "/balance").on("value", snap => {
-        document.getElementById("balance").textContent = snap.val() || 0;
-      });
-    }
-
-    // عرض أرصدة الجميع للآدمن
-    function loadAllBalances() {
-      db.ref("accounts").on("value", snap => {
-        const data = snap.val() || {};
-        let html = "";
-        for (let u in data) {
-          html += `<div>${u}: ${data[u].balance || 0} ريال</div>`;
-        }
-        document.getElementById("allBalances").innerHTML = html;
-      });
-    }
-  </script>
+      document.getElementById('goal-reqs').innerHTML = items.length? `<div class="list">${
+        items.map(g=>`
+          <div class="item">
+            <div>
+              <div style="font-weight:700">${g.acc==='omar'?'عمر':'شهد'} — ${g.title||'هدف'}</div>
+              <div class="tiny muted">${fmt(g.amount)} ر.س — ${fmtDate(g.createdAt||Date.now())}</div>
+            </div>
+            <div class="row" style="gap:6px">
+              <button class="btn" onclick="approveGoal('${g.acc}','${g.key}')">موافقة</button>
+              <button class="btn danger" onclick="rejectGoal('${g.acc}','${g.key}')">رفض</button>
+            </div>
+          </div>`).join('')
+      }</div>` : `<div class="card" style="padding:12px">لا توجد طلبات</div>`;
+    });
+  }
+}
+route();
+</script>
 </body>
 </html>
