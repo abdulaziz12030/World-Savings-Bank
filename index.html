@@ -75,10 +75,10 @@
 <!-- Firebase compat SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
-/*** 0) إعداد Firebase — عدّل ADMIN_UID بــ UID الآدمن ***/
+/*** 0) إعداد Firebase — بدّل ADMIN_UID لاحقًا بــ UID عبدالعزيز ***/
 const firebaseConfig = {
   apiKey: "AIzaSyC-KXnFzEliSECIH4jWI8Hf28eFuWRTn-c",
   authDomain: "world-savings-bank-5df02.firebaseapp.com",
@@ -91,9 +91,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db   = firebase.database();
-const ADMIN_UID = "PUT_ADMIN_UID_HERE";
 
-/*** 1) صور و PINs ***/
+const ADMIN_UID = "PUT_ADMIN_UID_HERE"; // 👈 ضع UID حساب عبدالعزيز هنا
+
+/*** 1) ثوابت وصور ***/
 const IMG = {
   admin: "https://i.postimg.cc/tTSfNWkn/image.jpg",
   omar:  "https://i.postimg.cc/LsmbdN0Z/image.jpg",
@@ -101,19 +102,29 @@ const IMG = {
 };
 const PINS = { omar:'4000', shahad:'5000', admin:'9000' };
 
-/*** 2) حالة ***/
+/*** 2) حالة واجهة ***/
 let ACCOUNTS = { omar:{name:'عمر',balance:0,goal:{}}, shahad:{name:'شهد',balance:0,goal:{}} };
-let TX = []; let REQ_TX = {}; let user = null;
+let TX = [];          // العمليات المعتمدة/المرفوضة
+let REQ_TX = {};      // الطلبات (قيد الموافقة)
+let user = null;
 
-/*** 3) مصادقة — تسجيل مجهول تلقائيًا للأطفال ***/
+/*** 3) مصادقة: تسجيل مجهول تلقائيًا للأولاد ***/
 auth.onAuthStateChanged(async u=>{
   user = u;
   document.getElementById('nav-signout').style.display = u? 'inline-flex':'none';
   document.getElementById('sync-badge').textContent = u? 'متصل':'غير متصل';
   if(!u){ await auth.signInAnonymously(); return; }
-  db.ref('accounts').on('value', s=>{ ACCOUNTS = s.val() || ACCOUNTS; route(); });
-  db.ref('transactions').on('value', s=>{ const a=[]; s.forEach(c=>a.push({id:c.key,...c.val()})); TX=a.sort((x,y)=>(y.createdAt||0)-(x.createdAt||0)); route(); });
-  db.ref('requests/transactions').on('value', s=>{ REQ_TX = s.val() || {}; route(); });
+
+  db.ref('accounts').on('value', snap=>{
+    ACCOUNTS = snap.val() || ACCOUNTS; route();
+  });
+  db.ref('transactions').on('value', snap=>{
+    const arr=[]; snap.forEach(c=>arr.push({id:c.key,...c.val()}));
+    TX = arr.sort((a,b)=>(b.createdAt||0)-(a.createdAt||0)); route();
+  });
+  db.ref('requests/transactions').on('value', snap=>{
+    REQ_TX = snap.val() || {}; route();
+  });
 });
 
 /*** 4) أدوات ***/
@@ -121,8 +132,9 @@ const root = document.getElementById('view-root');
 const fmt = n=>Number(n||0).toLocaleString('ar-SA');
 const fmtDate = ms=> new Date(ms).toLocaleString('ar-SA');
 document.getElementById('year').textContent = new Date().getFullYear();
+const uid = ()=> Math.random().toString(36).slice(2)+Date.now().toString(36);
 
-/*** 5) توجيه / تنقل ***/
+/*** 5) توجيه بسيط ***/
 document.getElementById('nav-home').onclick = ()=>location.hash = '#home';
 document.getElementById('nav-admin').onclick = ()=>location.hash = '#admin';
 document.getElementById('nav-signout').onclick = ()=>auth.signOut();
@@ -151,7 +163,7 @@ function openWithPin(target, ok){
   const now=Date.now();
   if(lockUntil[target] && now<lockUntil[target]){ alert('محاولات كثيرة خاطئة. حاول لاحقًا.'); return; }
   pinDesc.textContent = target==='admin'? 'لوحة عبدالعزيز' : `حساب ${target==='omar'?'عمر':'شهد'}`;
-  pinIn.value=''; pinErr.style.display='none'; ovl.style.display='grid'; setTimeout(()=>pinIn.focus(),40);
+  pinIn.value=''; pinErr.style.display='none'; ovl.style.display='grid'; setTimeout(()=>pinIn.focus(),50);
 }
 function confirmPin(){
   const v = pinIn.value.trim();
@@ -164,14 +176,16 @@ function confirmPin(){
   }
 }
 
-/*** 7) الرئيسية — بطاقتا عمر وشهد + أحدث العمليات ***/
-function goalPct(a){ const g=a.goal||{}; if(!g.amount||!g.approved) return 0; return Math.min(100,Math.max(0,Math.round((a.balance/g.amount)*100))); }
+/*** 7) واجهة الرئيسية ***/
+function goalPct(a){ const g=a.goal||{}; if(!g.amount||!g.approved) return 0;
+  return Math.max(0,Math.min(100,Math.round((a.balance/g.amount)*100)));
+}
 function renderHome(){
-  const pendingCount = Object.values(REQ_TX).filter(r=>r && r.status==='pending').length;
+  const pendingCount = Object.values(REQ_TX).filter(r=>r && r.status!=='rejected' && r.status!=='approved').length;
   root.innerHTML = `
     <section class="card" style="padding:16px;background:linear-gradient(90deg,var(--w800),var(--w700));color:#fff">
       <div style="font-weight:700">مرحبًا!</div>
-      <div class="tiny" style="color:#e5e7eb">اختر الحساب لإرسال الطلبات أو ادخل لوحة الآدمن للموافقة.</div>
+      <div class="tiny" style="color:#e5e7eb">اختر الحساب لإرسال طلباتك أو ادخل لوحة الآدمن للموافقة.</div>
       ${pendingCount? `<div class="badge" style="margin-top:6px;background:#fff;color:#111827">طلبات قيد الموافقة: ${pendingCount}</div>`:''}
     </section>
 
@@ -205,10 +219,14 @@ function renderHome(){
   `;
 }
 
-/*** 8) صفحة الحساب — تبويبات إيداع/مصروف/تحويل + هدف + سجل ***/
+/*** 8) صفحة الحساب (إرسال طلبات) ***/
 async function sendTxRequest(payload){
   if(!payload.amount || payload.amount<=0) return alert('أدخل مبلغ صحيح');
-  await db.ref('requests/transactions').push({ ...payload, createdAt: Date.now(), createdBy: auth.currentUser?.uid||null, status:'pending' });
+  await db.ref('requests/transactions').push({
+    ...payload, createdAt: Date.now(),
+    createdBy: auth.currentUser? auth.currentUser.uid : null,
+    status: 'pending'
+  });
   alert('تم إرسال الطلب للآدمن.');
 }
 function renderAccount(id){
@@ -318,14 +336,15 @@ function renderTxList(accountId, limit){
   }</div>`;
 }
 
-/*** 10) لوحة الآدمن — موافقة/رفض وتعديل الأرصدة ***/
+/*** 10) لوحة الآدمن ***/
 async function adminSignIn(email, password){
   const cred = await auth.signInWithEmailAndPassword(email, password);
   if(cred.user.uid !== ADMIN_UID){ alert('هذا الحساب ليس آدمن'); await auth.signOut(); }
 }
 async function approveReq(id){
   if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
-  const snap = await db.ref('requests/transactions/'+id).get(); if(!snap.exists()) return;
+  const snap = await db.ref('requests/transactions/'+id).get();
+  if(!snap.exists()) return;
   const r = snap.val();
   const fromRef = db.ref('accounts/'+r.accountId+'/balance');
   if(r.type==='deposit'){
@@ -357,7 +376,8 @@ async function rejectReq(id){
 
 async function approveGoal(id, reqKey){
   if(!user || user.uid!==ADMIN_UID) return alert('صلاحيات غير كافية');
-  const r = (await db.ref('requests/goals/'+id+'/'+reqKey).get()).val(); if(!r) return;
+  const r = (await db.ref('requests/goals/'+id+'/'+reqKey).get()).val();
+  if(!r) return;
   await db.ref('accounts/'+id+'/goal').set({title:r.title,amount:r.amount,approved:true});
   await db.ref('requests/goals/'+id+'/'+reqKey+'/status').set('approved');
 }
